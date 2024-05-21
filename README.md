@@ -14,7 +14,8 @@
 You can install `react-multi-input-rangeslider` using npm or yarn:
 
 ```sh
-npm install react-multi-input-rangeslider 
+npm install react-multi-input-rangeslider
 OR
 yarn add react-multi-input-rangeslider
 
+```

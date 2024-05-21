@@ -1,1 +1,3 @@
-export { default as MultiRangeSlider } from "./component/RangeSlide";
+import MultiRangeSlider from "./component/RangeSlide";
+
+export default MultiRangeSlider;

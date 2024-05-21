@@ -6,18 +6,14 @@ interface MultiRangeSliderProps {
   onChange: (values: { min: number; max: number }) => void;
   trackColor?: string;
   rangeColor?: string;
-  thumbColor?: string;
-  thumbSize?: number;
 }
 
-const MultiInputSlider: FC<MultiRangeSliderProps> = ({
+const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
   min,
   max,
-  onChange,
   trackColor = "#ddd",
-  rangeColor = "#007bff",
-  thumbColor = "#007bff",
-  thumbSize = 10,
+  onChange,
+  rangeColor = "#0b79d0",
 }) => {
   const [minVal, setMinVal] = useState<number>(min);
   const [maxVal, setMaxVal] = useState<number>(max);
@@ -40,7 +36,7 @@ const MultiInputSlider: FC<MultiRangeSliderProps> = ({
       range.current.style.left = `${minPercent}%`;
       range.current.style.width = `${maxPercent - minPercent}%`;
     }
-  }, [minVal, maxVal, getPercent]);
+  }, [minVal, getPercent]);
 
   // Set width of the range to decrease from the right side
   useEffect(() => {
@@ -50,11 +46,10 @@ const MultiInputSlider: FC<MultiRangeSliderProps> = ({
     if (range.current) {
       range.current.style.width = `${maxPercent - minPercent}%`;
     }
-  }, [minVal, maxVal, getPercent]);
+  }, [maxVal, getPercent]);
 
   // Get min and max values when their state changes
   useEffect(() => {
-    // Only call onChange if values have actually changed
     if (minVal !== minValRef.current || maxVal !== maxValRef.current) {
       onChange({ min: minVal, max: maxVal });
       minValRef.current = minVal;
@@ -75,10 +70,7 @@ const MultiInputSlider: FC<MultiRangeSliderProps> = ({
         }}
         className="thumb thumb--left"
         style={{
-          zIndex: minVal > max - 100 ? 5 : undefined,
-          backgroundColor: thumbColor,
-          width: `${thumbSize}px`,
-          height: `${thumbSize}px`,
+          zIndex: minVal > max - 100 || minVal === maxVal ? 5 : undefined,
         }}
       />
       <input
@@ -92,9 +84,7 @@ const MultiInputSlider: FC<MultiRangeSliderProps> = ({
         }}
         className="thumb thumb--right"
         style={{
-          backgroundColor: thumbColor,
-          width: `${thumbSize}px`,
-          height: `${thumbSize}px`,
+          zIndex: minVal > max - 100 || minVal === maxVal ? 4 : undefined,
         }}
       />
 
@@ -105,8 +95,8 @@ const MultiInputSlider: FC<MultiRangeSliderProps> = ({
         />
         <div
           ref={range}
-          className="slider__range"
           style={{ backgroundColor: rangeColor }}
+          className="slider__range"
         />
         <div className="flex items-center justify-center gap-2 pt-3">
           <div className="text-xs font-medium">${minVal}</div>
@@ -118,4 +108,4 @@ const MultiInputSlider: FC<MultiRangeSliderProps> = ({
   );
 };
 
-export default MultiInputSlider;
+export default MultiRangeSlider;

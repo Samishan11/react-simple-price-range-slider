@@ -1,6 +1,6 @@
 {
   "name": "react-multi-input-rangeslider",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "react-multi-input-rangeslider is a highly customizable and easy-to-use React component that allows users to select a range of values within a specified minimum and maximum range. This component is particularly useful for applications that require a user to specify price ranges, filter ranges, or any other numeric range input. It is built with TypeScript and designed to be flexible and easy to integrate into any React application.",
   "main": "dist/index.js",
   "scripts": {
