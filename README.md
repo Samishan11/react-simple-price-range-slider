@@ -51,9 +51,11 @@ In this example, the MultiInputSlider component is used to allow users to select
 
 # Props
 
+```sh
 `Type`: Number
 `defaultValue` Value: [0,100]
 `Optional`: No
 `min` Number: 0
 `max` Number :0
 `onChange`: function
+```
