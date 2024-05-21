@@ -10,7 +10,7 @@ interface MultiRangeSliderProps {
   thumbSize?: number;
 }
 
-const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
+const MultiInputSlider: FC<MultiRangeSliderProps> = ({
   min,
   max,
   onChange,
@@ -118,4 +118,4 @@ const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
   );
 };
 
-export default MultiRangeSlider;
+export default MultiInputSlider;

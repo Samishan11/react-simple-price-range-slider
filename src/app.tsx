@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import MultiRangeSlider from "./component/RangeSlide";
+import MultiInputSlider from "./component/RangeSlide";
 
-function App() {
+function MultiRangeSlider() {
   const [sliderValues, setSliderValues] = useState({ min: 0, max: 100 });
 
   const handleSliderChange = (values: typeof sliderValues) => {
@@ -10,7 +10,7 @@ function App() {
 
   return (
     <div className="react_simple_price_range_slider">
-      <MultiRangeSlider
+      <MultiInputSlider
         min={0}
         max={100}
         onChange={handleSliderChange}
@@ -23,4 +23,4 @@ function App() {
   );
 }
 
-export default App;
+export default MultiRangeSlider;
