@@ -10,8 +10,10 @@
   },
   "keywords": [
     "react",
-    "rangeslider",
-    "npm"
+    "range-slider",
+    "multi-input",
+    "input-range",
+    "price-range"
   ],
   "repository": {
     "type": "git",
