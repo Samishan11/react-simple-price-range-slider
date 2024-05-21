@@ -6,6 +6,7 @@ interface MultiRangeSliderProps {
   onChange: (values: { min: number; max: number }) => void;
   trackColor?: string;
   rangeColor?: string;
+  disabled?: boolean;
 }
 
 const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
@@ -14,6 +15,7 @@ const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
   trackColor = "#ddd",
   onChange,
   rangeColor = "#0b79d0",
+  disabled = false,
 }) => {
   const [minVal, setMinVal] = useState<number>(min);
   const [maxVal, setMaxVal] = useState<number>(max);
@@ -64,6 +66,7 @@ const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
         min={min}
         max={max}
         value={minVal}
+        disabled={disabled}
         onChange={(event) => {
           const value = Math.min(Number(event.target.value), maxVal - 1);
           setMinVal(value);
@@ -78,6 +81,7 @@ const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
         min={min}
         max={max}
         value={maxVal}
+        disabled={disabled}
         onChange={(event) => {
           const value = Math.max(Number(event.target.value), minVal + 1);
           setMaxVal(value);

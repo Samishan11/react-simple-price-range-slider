@@ -19,3 +19,41 @@ OR
 yarn add react-multi-input-rangeslider
 
 ```
+
+```sh
+#Usage
+
+Here's an example of how you can use react-multi-input-rangeslider in your React application:
+
+import React, { useState } from "react";
+import MultiInputSlider from "react-multi-input-rangeslider";
+
+const App = () => {
+  const [price, setPrice] = useState<{ minPrice: number; maxPrice: number }>({
+    minPrice: 0,
+    maxPrice: 0,
+  });
+
+  return (
+    <MultiInputSlider
+      min={0}
+      max={1000}
+      onChange={({ min, max }) => setPrice({ minPrice: min, maxPrice: max })}
+    />
+  );
+};
+
+export default App;
+
+In this example, the MultiInputSlider component is used to allow users to select a range of values.
+
+```
+
+# Props
+
+`Type`: Number
+`defaultValue` Value: [0,100]
+`Optional`: No
+`min` Number: 0
+`max` Number :0
+`onChange`: function
