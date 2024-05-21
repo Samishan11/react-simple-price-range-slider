@@ -9,8 +9,7 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <h1>MultiRangeSlider Example</h1>
+    <div className="react_simple_price_range_slider">
       <MultiRangeSlider
         min={0}
         max={100}
@@ -20,8 +19,6 @@ function App() {
         thumbColor="#007bff"
         thumbSize={20}
       />
-      <div>Min Value: {sliderValues.min}</div>
-      <div>Max Value: {sliderValues.max}</div>
     </div>
   );
 }
