@@ -20,11 +20,11 @@ yarn add react-multi-input-rangeslider
 
 ```
 
-```sh
-#Usage
+## Usage
 
 Here's an example of how you can use react-multi-input-rangeslider in your React application:
 
+```js
 import React, { useState } from "react";
 import MultiInputSlider from "react-multi-input-rangeslider";
 
@@ -44,18 +44,52 @@ const App = () => {
 };
 
 export default App;
-
-In this example, the MultiInputSlider component is used to allow users to select a range of values.
-
 ```
 
-# Props
+## Props
 
-```sh
-`Type`: Number
-`defaultValue` Value: [0,100]
-`Optional`: No
-`min` Number: 0
-`max` Number :0
-`onChange`: function
-```
+<table>
+<tr>
+    <th>Property</th>
+    <th>Type</th>
+    <th>Default Value</th>
+    <th>Description</th>
+</tr>
+
+<tr>
+    <td><code>min</code></td>
+    <td>number</td>
+    <td>0</td>
+    <td>Specifies the lowest value in the range of permitted values. Its value must be less than that of <code>max</code>.</td>
+</tr>
+<tr>
+    <td><code>max</code></td>
+    <td>number</td>
+    <td>100</td>
+    <td>Specifies the greatest value in the range of permitted values. Its value must be greater than that of <code>min</code>.</td>
+</tr>
+<tr>
+    <td><code>disabled</code></td>
+    <td>boolean</td>
+    <td>false</td>
+    <td>Specifies whether the range slider element is disabled or not.</td>
+</tr>
+<tr>
+    <td><code>onChange</code></td>
+    <td>function</td>
+    <td>NOOP</td>
+    <td>Specifies a function to be called when the slide event is triggered for any of the thumbs.</td>
+</tr>
+<tr>
+    <td><code>rangeColor</code></td>
+    <td>string</td>
+    <td>color</td>
+    <td>Specifies the color for the range.</td>
+</tr>
+<tr>
+    <td><code>trackColor</code></td>
+    <td>string</td>
+    <td>color</td>
+    <td>Specifies the color for the track.</td>
+</tr>
+</table>
