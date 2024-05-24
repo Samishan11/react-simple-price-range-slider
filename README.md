@@ -27,6 +27,7 @@ Here's an example of how you can use react-multi-input-rangeslider in your React
 ```js
 import React, { useState } from "react";
 import MultiInputSlider from "react-multi-input-rangeslider";
+import "react-multi-input-rangeslider/style.style.css"
 
 const App = () => {
   const [price, setPrice] = useState<{ minPrice: number; maxPrice: number }>({
