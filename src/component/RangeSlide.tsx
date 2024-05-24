@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useState, useRef, FC } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useState,
+  useRef,
+  FC,
+  CSSProperties,
+} from "react";
 
 interface MultiRangeSliderProps {
   min: number;
@@ -6,8 +13,19 @@ interface MultiRangeSliderProps {
   onChange: (values: { min: number; max: number }) => void;
   trackColor?: string;
   rangeColor?: string;
-  disabled?: boolean;
+  valueStyle?: CSSProperties;
+  currencyText?: string;
+  width?: string;
 }
+
+const valueCss = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 1,
+  gap: "2px",
+  paddingTop: "3px",
+};
 
 const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
   min,
@@ -15,7 +33,9 @@ const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
   trackColor = "#ddd",
   onChange,
   rangeColor = "#0b79d0",
-  disabled = false,
+  valueStyle = valueCss,
+  width = "250px",
+  currencyText = "$",
 }) => {
   const [minVal, setMinVal] = useState<number>(min);
   const [maxVal, setMaxVal] = useState<number>(max);
@@ -60,19 +80,19 @@ const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
   }, [minVal, maxVal, onChange]);
 
   return (
-    <div className="multislide_container">
+    <div style={{ width }} className="multi-slide-input_container">
       <input
         type="range"
         min={min}
         max={max}
         value={minVal}
-        disabled={disabled}
-        onChange={(event) => {
+        onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
           const value = Math.min(Number(event.target.value), maxVal - 1);
           setMinVal(value);
         }}
-        className="thumb thumb--left"
+        className="thumb thumb-left"
         style={{
+          width,
           zIndex: minVal > max - 100 || minVal === maxVal ? 5 : undefined,
         }}
       />
@@ -81,31 +101,34 @@ const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
         min={min}
         max={max}
         value={maxVal}
-        disabled={disabled}
-        onChange={(event) => {
+        onChange={(event: React.ChangeEvent<HTMLInputElement>) => {
           const value = Math.max(Number(event.target.value), minVal + 1);
           setMaxVal(value);
         }}
-        className="thumb thumb--right"
+        className="thumb thumb-right"
         style={{
+          width,
           zIndex: minVal > max - 100 || minVal === maxVal ? 4 : undefined,
         }}
       />
 
       <div className="slider">
-        <div
-          className="slider__track"
-          style={{ backgroundColor: trackColor }}
-        />
+        <div className="track-slider" style={{ backgroundColor: trackColor }} />
         <div
           ref={range}
           style={{ backgroundColor: rangeColor }}
-          className="slider__range"
+          className="range-slider"
         />
-        <div className="flex items-center justify-center gap-2 pt-3">
-          <div className="text-xs font-medium">${minVal}</div>
+        <div className="values" style={valueStyle}>
+          <div className="text-xs font-medium">
+            {currencyText}
+            {minVal}
+          </div>
           <span>-</span>
-          <div className="text-xs font-medium">${maxVal}</div>
+          <div className="text-xs font-medium">
+            {currencyText}
+            {maxVal}
+          </div>
         </div>
       </div>
     </div>
