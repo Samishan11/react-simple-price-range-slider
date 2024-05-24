@@ -24,7 +24,7 @@ const valueCss = {
   justifyContent: "center",
   zIndex: 1,
   gap: "2px",
-  paddingTop: "3px",
+  paddingTop: "10px",
 };
 
 const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
