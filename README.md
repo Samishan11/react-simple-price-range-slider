@@ -4,8 +4,7 @@
 
 ## Features
 
-- Customizable track and range colors
-- Adjustable thumb size
+- Customizable width, track and range colors
 - Supports minimum and maximum values
 - Built with TypeScript
 
@@ -27,7 +26,7 @@ Here's an example of how you can use react-multi-input-rangeslider in your React
 ```js
 import React, { useState } from "react";
 import MultiInputSlider from "react-multi-input-rangeslider";
-import "react-multi-input-rangeslider/style.style.css"
+import "react-multi-input-rangeslider/style/style.css"
 
 const App = () => {
   const [price, setPrice] = useState<{ minPrice: number; maxPrice: number }>({
@@ -50,6 +49,12 @@ export default App;
 ## Props
 
 <table>
+<tr>
+    <td><code>width</code></td>
+    <td>string</td>
+    <td>300px</td>
+    <td>Specifies the width for the the input slider.</td>
+</tr>
 <tr>
     <th>Property</th>
     <th>Type</th>
@@ -92,5 +97,18 @@ export default App;
     <td>string</td>
     <td>color</td>
     <td>Specifies the color for the track.</td>
+</tr>
+<tr>
+    <td><code>valueStyle</code></td>
+    <td>style</td>
+    <td>{{display:"flex" , justifyContent:"center" , alignItems:"center" , paddingTop:"10p" , gap:"8px"}}</td>
+    <td>Specifies the style for the the display values.</td>
+</tr>
+<tr>
+    <td><code>currencyText</code></td>
+    <td>string</td>
+    <td>$,€,Rs. and more</td>
+    <td>Specifies the style for the the display values.</td>
+</tr>
 </tr>
 </table>
