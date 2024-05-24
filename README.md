@@ -50,18 +50,17 @@ export default App;
 
 <table>
 <tr>
-    <td><code>width</code></td>
-    <td>string</td>
-    <td>300px</td>
-    <td>Specifies the width for the the input slider.</td>
-</tr>
-<tr>
     <th>Property</th>
     <th>Type</th>
     <th>Default Value</th>
     <th>Description</th>
 </tr>
-
+<tr>
+    <td><code>width</code></td>
+    <td>string</td>
+    <td>300px</td>
+    <td>Specifies the width for the the input slider.</td>
+</tr>
 <tr>
     <td><code>min</code></td>
     <td>number</td>
