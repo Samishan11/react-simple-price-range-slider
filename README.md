@@ -1,5 +1,10 @@
 # react-multi-input-rangeslider
 
+[![npm version](https://img.shields.io/npm/v/react-multi-input-rangeslider.svg)](https://www.npmjs.com/package/react-multi-input-rangeslider)
+[![CI](https://github.com/Samishan11/react-simple-price-range-slider/actions/workflows/ci.yml/badge.svg)](https://github.com/Samishan11/react-simple-price-range-slider/actions/workflows/ci.yml)
+[![types](https://img.shields.io/npm/types/react-multi-input-rangeslider.svg)](https://www.npmjs.com/package/react-multi-input-rangeslider)
+[![license](https://img.shields.io/npm/l/react-multi-input-rangeslider.svg)](LICENSE)
+
 A small, accessible, themeable **dual-thumb range slider** for React — built for price filters and any other numeric range. Zero runtime dependencies, TypeScript types included, works with React 16.8 – 19 and server rendering.
 
 ![Preview](docs/preview.png)
