@@ -1,20 +1,26 @@
 {
   "name": "react-multi-input-rangeslider",
-  "version": "1.0.11",
-  "description": "react-multi-input-rangeslider is a highly customizable and easy-to-use React component that allows users to select a range of values within a specified minimum and maximum range. This component is particularly useful for applications that require a user to specify price ranges, filter ranges, or any other numeric range input. It is built with TypeScript and designed to be flexible and easy to integrate into any React application.",
-  "main": "dist/index.js",
+  "version": "2.0.0",
+  "description": "Accessible, themeable dual-thumb range slider for React (price ranges and more). Controlled/uncontrolled, tooltips, marks, RTL, dark mode, CSS-variable theming.",
+  "main": "dist/index.cjs",
   "scripts": {
-    "build": "tsc",
-    "prepublishOnly": "npm run build",
-    "start": "npm run",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsup && cp src/styles.css dist/style.css",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build",
+    "test": "vitest run",
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "docs": "vite build --base ./ --outDir ../site --emptyOutDir"
   },
   "keywords": [
     "react",
     "range-slider",
+    "dual-slider",
     "multi-input",
     "input-range",
-    "price-range"
+    "price-range",
+    "slider",
+    "accessible",
+    "typescript"
   ],
   "repository": {
     "type": "git",
@@ -27,19 +33,42 @@
   },
   "homepage": "https://github.com/Samishan11/react-simple-price-range-slider#readme",
   "peerDependencies": {
-    "react": "^16.0.0",
-    "react-dom": "^16.0.0"
+    "react": ">=16.8.0 <20",
+    "react-dom": ">=16.8.0 <20"
   },
   "devDependencies": {
-    "@types/react": "^18.3.2",
-    "@types/react-dom": "^18.3.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.9",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^6.3.0",
+    "jsdom": "^29.1.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "tslib": "^2.6.2",
-    "typescript": "^4.9.5"
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.7",
+    "vitest": "^4.1.12"
   },
-  "dependencies": {
-    "@babel/cli": "^7.24.5",
-    "@babel/preset-env": "^7.24.5",
-    "@babel/preset-react": "^7.24.1",
-    "save-dev": "^0.0.1-security"
-  }
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./style.css": "./dist/style.css",
+    "./style/style.css": "./dist/style.css",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module"
 }
