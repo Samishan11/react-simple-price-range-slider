@@ -1,21 +1,26 @@
 {
   "name": "react-multi-input-rangeslider",
-  "version": "1.0.11",
-  "description": "react-multi-input-rangeslider is a highly customizable and easy-to-use React component that allows users to select a range of values within a specified minimum and maximum range. This component is particularly useful for applications that require a user to specify price ranges, filter ranges, or any other numeric range input. It is built with TypeScript and designed to be flexible and easy to integrate into any React application.",
+  "version": "2.0.0",
+  "description": "Accessible, themeable dual-thumb range slider for React (price ranges and more). Controlled/uncontrolled, tooltips, marks, RTL, dark mode, CSS-variable theming.",
   "main": "dist/index.cjs",
   "scripts": {
     "build": "tsup && cp src/styles.css dist/style.css",
     "prepublishOnly": "npm run typecheck && npm test && npm run build",
     "test": "vitest run",
     "dev": "vite",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "docs": "vite build --base ./ --outDir ../site --emptyOutDir"
   },
   "keywords": [
     "react",
     "range-slider",
+    "dual-slider",
     "multi-input",
     "input-range",
-    "price-range"
+    "price-range",
+    "slider",
+    "accessible",
+    "typescript"
   ],
   "repository": {
     "type": "git",
@@ -49,7 +54,9 @@
   },
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
-  "sideEffects": "[\"**/*.css\"]",
+  "sideEffects": [
+    "**/*.css"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -60,6 +67,8 @@
     "./style/style.css": "./dist/style.css",
     "./package.json": "./package.json"
   },
-  "files": "[\"dist\"]",
+  "files": [
+    "dist"
+  ],
   "type": "module"
 }

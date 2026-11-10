@@ -1,113 +1,137 @@
 # react-multi-input-rangeslider
 
-`react-multi-input-rangeslider` is a highly customizable and easy-to-use React component that allows users to select a range of values within a specified minimum and maximum range. This component is particularly useful for applications that require a user to specify price ranges, filter ranges, or any other numeric range input. It is built with TypeScript and designed to be flexible and easy to integrate into any React application.
+A small, accessible, themeable **dual-thumb range slider** for React — built for price filters and any other numeric range. Zero runtime dependencies, TypeScript types included, works with React 16.8 – 19 and server rendering.
 
-## Features
+![Preview](docs/preview.png)
 
-- Customizable width, track and range colors
-- Supports minimum and maximum values
-- Built with TypeScript
+- Controlled **and** uncontrolled
+- `step`, `minGap`, `disabled`, custom value formatting (`Intl.NumberFormat`, currencies, units…)
+- Themeable with **CSS variables**; light / dark / auto themes
+- Value tooltips, tick marks (auto or custom labels), RTL
+- Accessible: native range inputs, labelled thumbs, keyboard support, 24px targets, forced-colors support
+- Style any inner part via `classNames` / `styles`
 
-## Installation
-
-You can install `react-multi-input-rangeslider` using npm or yarn:
+## Install
 
 ```sh
 npm install react-multi-input-rangeslider
-OR
-yarn add react-multi-input-rangeslider
-
 ```
 
 ## Usage
 
-Here's an example of how you can use react-multi-input-rangeslider in your React application:
+```tsx
+import { useState } from "react";
+import MultiRangeSlider from "react-multi-input-rangeslider";
+import "react-multi-input-rangeslider/style.css";
 
-```js
-import React, { useState } from "react";
-import MultiInputSlider from "react-multi-input-rangeslider";
-import "react-multi-input-rangeslider/style/style.css"
-
-const App = () => {
-  const [price, setPrice] = useState<{ minPrice: number; maxPrice: number }>({
-    minPrice: 0,
-    maxPrice: 0,
-  });
+export default function PriceFilter() {
+  const [range, setRange] = useState({ min: 200, max: 800 });
 
   return (
-    <MultiInputSlider
+    <MultiRangeSlider
       min={0}
       max={1000}
-      onChange={({ min, max }) => setPrice({ minPrice: min, maxPrice: max })}
+      step={10}
+      value={range}
+      onChange={setRange}
+      formatValue={(n) => `$${n}`}
+      tooltip
+      ariaLabel="Price range"
     />
   );
-};
-
-export default App;
+}
 ```
+
+Uncontrolled? Drop `value` and use `defaultValue` (or nothing, to start at the full range):
+
+```tsx
+<MultiRangeSlider min={0} max={100} defaultValue={{ min: 20, max: 80 }} onChangeEnd={(v) => fetchResults(v)} />
+```
+
+> The old `react-multi-input-rangeslider/style/style.css` import path still works.
 
 ## Props
 
-<table>
-<tr>
-    <th>Property</th>
-    <th>Type</th>
-    <th>Default Value</th>
-    <th>Description</th>
-</tr>
-<tr>
-    <td><code>width</code></td>
-    <td>string</td>
-    <td>300px</td>
-    <td>Specifies the width for the the input slider.</td>
-</tr>
-<tr>
-    <td><code>min</code></td>
-    <td>number</td>
-    <td>0</td>
-    <td>Specifies the lowest value in the range of permitted values. Its value must be less than that of <code>max</code>.</td>
-</tr>
-<tr>
-    <td><code>max</code></td>
-    <td>number</td>
-    <td>100</td>
-    <td>Specifies the greatest value in the range of permitted values. Its value must be greater than that of <code>min</code>.</td>
-</tr>
-<tr>
-    <td><code>disabled</code></td>
-    <td>boolean</td>
-    <td>false</td>
-    <td>Specifies whether the range slider element is disabled or not.</td>
-</tr>
-<tr>
-    <td><code>onChange</code></td>
-    <td>function</td>
-    <td>NOOP</td>
-    <td>Specifies a function to be called when the slide event is triggered for any of the thumbs.</td>
-</tr>
-<tr>
-    <td><code>rangeColor</code></td>
-    <td>string</td>
-    <td>color</td>
-    <td>Specifies the color for the range.</td>
-</tr>
-<tr>
-    <td><code>trackColor</code></td>
-    <td>string</td>
-    <td>color</td>
-    <td>Specifies the color for the track.</td>
-</tr>
-<tr>
-    <td><code>valueStyle</code></td>
-    <td>style</td>
-    <td>{{display:"flex" , justifyContent:"center" , alignItems:"center" , paddingTop:"10p" , gap:"8px"}}</td>
-    <td>Specifies the style for the the display values.</td>
-</tr>
-<tr>
-    <td><code>currencyText</code></td>
-    <td>string</td>
-    <td>$,€,Rs. and more</td>
-    <td>Specifies the style for the the display values.</td>
-</tr>
-</tr>
-</table>
+| Prop | Type | Default | Description |
+| --- | --- | --- | --- |
+| `min` | `number` | — | Lowest selectable value. |
+| `max` | `number` | — | Highest selectable value. |
+| `value` | `{ min, max }` | — | Controlled value. Pair with `onChange`. |
+| `defaultValue` | `{ min, max }` | full range | Initial value when uncontrolled. |
+| `onChange` | `(v: { min, max }) => void` | — | Called on every change while dragging or using the keyboard. |
+| `onChangeEnd` | `(v: { min, max }) => void` | — | Called once when a drag or key press ends. Handy for fetching. |
+| `step` | `number` | `1` | Slider granularity. |
+| `minGap` | `number` | `step` | Minimum distance between the thumbs. |
+| `disabled` | `boolean` | `false` | Disable both thumbs. |
+| `formatValue` | `(n: number) => string` | `` `${currencyText}${n}` `` | Formats the displayed values, tooltips, labels and `aria-valuetext`. |
+| `showValues` | `boolean` | `true` | Show the `min – max` row under the slider. |
+| `tooltip` | `boolean \| "hover" \| "always"` | `false` | Value bubble over each thumb. `true` = `"hover"` (also on focus/drag). |
+| `marks` | `boolean \| number \| { value, label? }[]` | — | Tick marks. `true` = 4 intervals; a number = that many; or an array of custom marks. |
+| `theme` | `"light" \| "dark" \| "auto"` | light | `"auto"` follows the OS colour scheme. |
+| `dir` | `"ltr" \| "rtl"` | — | Text direction. |
+| `name` | `string` | — | Form field name. Submitted as `${name}-min` / `${name}-max`. |
+| `ariaLabel` | `string` | — | Accessible name of the whole slider (`role="group"`). |
+| `minAriaLabel` / `maxAriaLabel` | `string` | `"Minimum value"` / `"Maximum value"` | Accessible names of the thumbs. |
+| `className` / `style` | | | Applied to the root element. |
+| `classNames` / `styles` | `Partial<Record<Slot, …>>` | — | Per-part overrides. Slots: `root control track range thumb tooltip marks mark values value`. |
+| `width` | `string` | `250px` | Slider width (sets `--rs-width`). |
+| `rangeColor` / `trackColor` | `string` | — | Shortcuts for `--rs-range-color` / `--rs-track-color`. |
+| `currencyText` | `string` | `"$"` | Prefix used when `formatValue` isn't set. |
+| `valueStyle` | `CSSProperties` | — | Inline style for the values row. |
+
+## Theming
+
+Everything visual is a CSS variable. Override them on the slider, a wrapper, or globally:
+
+```css
+.my-slider {
+  --rs-range-color: #db2777;
+  --rs-thumb-size: 28px;
+  --rs-track-height: 10px;
+}
+```
+
+| Variable | Default (light) |
+| --- | --- |
+| `--rs-width` | `250px` |
+| `--rs-track-color` | `#e2e8f0` |
+| `--rs-range-color` | `#2563eb` |
+| `--rs-track-height` | `6px` |
+| `--rs-thumb-size` | `24px` |
+| `--rs-thumb-color` | `#fff` |
+| `--rs-thumb-border-color` | `var(--rs-range-color)` |
+| `--rs-thumb-border-width` | `2px` |
+| `--rs-focus-ring` | translucent range-colour ring |
+| `--rs-value-color` | `#334155` |
+| `--rs-font-size` | `0.875rem` |
+| `--rs-tooltip-bg` / `--rs-tooltip-color` | `#0f172a` / `#fff` |
+| `--rs-mark-color` | `#64748b` |
+
+Dark mode: `theme="dark"`, or `theme="auto"` to follow `prefers-color-scheme`.
+
+## Migrating from 1.x
+
+2.0 is mostly additive — **the 1.x props still work** (`min`, `max`, `onChange`, `rangeColor`, `trackColor`, `currencyText`, `valueStyle`, `width`). What changed:
+
+- **Markup & class names.** The old `.thumb`, `.slider`, `.track-slider`, `.range-slider` classes are gone (replaced by `.rs-*`). If you overrode them in your own CSS, switch to the `--rs-*` variables or the `classNames` / `styles` props.
+- **Tailwind classes removed** from the value labels (`text-xs font-medium` were never shipped with the package). Use `styles.value` / `classNames.value` instead.
+- **`onChange` timing.** It now fires from the input event itself (not from an effect), only when the value actually changes, and never on mount.
+- **Default thumb is 24px** (was 18px) and the default look is updated.
+- **Peer dependencies** are now `react >=16.8 <20` and `react-dom >=16.8 <20`; the package ships ESM + CJS with types.
+- **Bug fixes:** `disabled` now works (it was documented but missing); `min` / `max` prop changes are respected; the fill is exact (no whole-percent rounding); thumbs no longer get stuck when both sit at the max end.
+- **Controlled mode is new:** pass `value` to drive the slider from state (e.g. a "reset filters" button).
+
+## Development
+
+```sh
+npm install
+npm run dev        # playground at http://localhost:5173
+npm test           # vitest
+npm run typecheck
+npm run build      # dist/ (ESM, CJS, d.ts, style.css)
+npm run docs       # static playground into ./site
+```
+
+## License
+
+MIT
