@@ -1,81 +1,143 @@
-.slider {
+/*
+ * Theming: override any of these CSS variables on .rs-root (or an ancestor).
+ *
+ *   --rs-width, --rs-track-color, --rs-range-color, --rs-track-height,
+ *   --rs-thumb-size, --rs-thumb-color, --rs-thumb-border-color,
+ *   --rs-thumb-border-width, --rs-focus-ring, --rs-value-color, --rs-font-size
+ */
+.rs-root {
+  --rs-width: 250px;
+  --rs-track-color: #e2e8f0;
+  --rs-range-color: #2563eb;
+  --rs-track-height: 6px;
+  --rs-thumb-size: 20px;
+  --rs-thumb-color: #fff;
+  --rs-thumb-border-color: var(--rs-range-color);
+  --rs-thumb-border-width: 2px;
+  --rs-focus-ring: 0 0 0 4px color-mix(in srgb, var(--rs-range-color) 28%, transparent);
+  --rs-value-color: #334155;
+  --rs-font-size: 0.875rem;
+
+  box-sizing: border-box;
+  width: var(--rs-width);
+  max-width: 100%;
+  font-size: var(--rs-font-size);
+  color: var(--rs-value-color);
+}
+.rs-root *,
+.rs-root *::before,
+.rs-root *::after {
+  box-sizing: border-box;
+}
+
+.rs-control {
   position: relative;
+  height: var(--rs-thumb-size);
 }
 
-.track-slider,
-.range-slider,
-.slider-left-val,
-.slider-right-value {
+/* The rail is inset by half a thumb so the fill lines up with thumb centres. */
+.rs-rail {
   position: absolute;
+  left: calc(var(--rs-thumb-size) / 2);
+  right: calc(var(--rs-thumb-size) / 2);
+  top: 50%;
+  height: var(--rs-track-height);
+  transform: translateY(-50%);
+}
+.rs-track,
+.rs-range {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+}
+.rs-track {
+  left: 0;
+  right: 0;
+  background: var(--rs-track-color);
+}
+.rs-range {
+  left: var(--rs-left);
+  right: var(--rs-right);
+  background: var(--rs-range-color);
 }
 
-.track-slider,
-.range-slider {
-  border-radius: 3px;
-  height: 5px;
-}
-
-.track-slider {
-  background-color: #ced4da;
+.rs-thumb {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  z-index: 1;
-}
-
-.range-slider {
-  z-index: 2;
-}
-
-.slider-left-value {
-  left: 6px;
-}
-
-.slider-right-value {
-  right: -4px;
-}
-
-.thumb,
-.thumb::-webkit-slider-thumb {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  outline: none;
+  pointer-events: none;
   -webkit-appearance: none;
+  appearance: none;
   -webkit-tap-highlight-color: transparent;
 }
-
-.thumb {
-  pointer-events: none;
-  position: absolute;
-  height: 0;
-  outline: none;
+.rs-thumb::-webkit-slider-runnable-track {
+  height: var(--rs-thumb-size);
+  background: transparent;
+  border: 0;
+}
+.rs-thumb::-moz-range-track {
+  height: var(--rs-thumb-size);
+  background: transparent;
+  border: 0;
 }
 
-.thumb-left {
-  z-index: 3;
-}
-
-.thumb-right {
-  z-index: 4;
-}
-
-.thumb::-webkit-slider-thumb {
-  background-color: #f1f5f7;
-  border: none;
+.rs-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--rs-thumb-size);
+  height: var(--rs-thumb-size);
   border-radius: 50%;
-  box-shadow: 0 0 1px 1px #ced4da;
-  cursor: pointer;
-  height: 18px;
-  width: 18px;
-  margin-top: 4px;
+  background: var(--rs-thumb-color);
+  border: var(--rs-thumb-border-width) solid var(--rs-thumb-border-color);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  cursor: grab;
   pointer-events: all;
-  position: relative;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.rs-thumb::-moz-range-thumb {
+  width: var(--rs-thumb-size);
+  height: var(--rs-thumb-size);
+  border-radius: 50%;
+  background: var(--rs-thumb-color);
+  border: var(--rs-thumb-border-width) solid var(--rs-thumb-border-color);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  cursor: grab;
+  pointer-events: all;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-.thumb::-moz-range-thumb {
-  background-color: #f1f5f7;
-  border: none;
-  border-radius: 50%;
-  box-shadow: 0 0 1px 1px #ced4da;
-  cursor: pointer;
-  height: 18px;
-  width: 18px;
-  margin-top: 4px;
-  pointer-events: all;
-  position: relative;
+.rs-thumb:hover::-webkit-slider-thumb { transform: scale(1.1); }
+.rs-thumb:hover::-moz-range-thumb { transform: scale(1.1); }
+.rs-thumb:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.18); }
+.rs-thumb:active::-moz-range-thumb { cursor: grabbing; transform: scale(1.18); }
+.rs-thumb:focus-visible::-webkit-slider-thumb {
+  box-shadow: var(--rs-focus-ring), 0 1px 3px rgb(0 0 0 / 0.25);
+}
+.rs-thumb:focus-visible::-moz-range-thumb {
+  box-shadow: var(--rs-focus-ring), 0 1px 3px rgb(0 0 0 / 0.25);
+}
+
+.rs-root[data-disabled] { opacity: 0.5; }
+.rs-root[data-disabled] .rs-thumb::-webkit-slider-thumb { cursor: not-allowed; }
+.rs-root[data-disabled] .rs-thumb::-moz-range-thumb { cursor: not-allowed; }
+
+.rs-values {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding-top: 10px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-thumb::-webkit-slider-thumb,
+  .rs-thumb::-moz-range-thumb { transition: none; }
 }
