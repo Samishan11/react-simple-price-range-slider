@@ -46,6 +46,8 @@ export interface MultiRangeSliderProps {
   showValues?: boolean;
   /** Form field base name. Inputs are submitted as `${name}-min` / `${name}-max`. */
   name?: string;
+  /** Accessible name for the whole slider (rendered as a labelled `group`). */
+  ariaLabel?: string;
   minAriaLabel?: string;
   maxAriaLabel?: string;
   className?: string;
@@ -113,6 +115,7 @@ const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
   formatValue,
   showValues = true,
   name,
+  ariaLabel,
   minAriaLabel = "Minimum value",
   maxAriaLabel = "Maximum value",
   className,
@@ -229,6 +232,8 @@ const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
     <div
       className={[cx("root", "rs-root"), className].filter(Boolean).join(" ")}
       style={rootStyle}
+      role="group"
+      aria-label={ariaLabel}
       dir={dir}
       data-theme={theme}
       data-disabled={disabled || undefined}

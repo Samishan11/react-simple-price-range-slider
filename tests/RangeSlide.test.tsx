@@ -192,3 +192,25 @@ describe("phase 3 features", () => {
     expect(container.querySelector(".rs-range.g")).toHaveStyle({ opacity: "0.5" });
   });
 });
+
+describe("accessibility", () => {
+  it("exposes a labelled group and labelled, valuetext-bearing thumbs", () => {
+    render(<MultiRangeSlider min={0} max={100} ariaLabel="Price range" minAriaLabel="Min price" maxAriaLabel="Max price" />);
+    expect(screen.getByRole("group", { name: "Price range" })).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "Min price" })).toHaveAttribute("aria-valuetext", "$0");
+    expect(screen.getByRole("slider", { name: "Max price" })).toHaveAttribute("aria-valuetext", "$100");
+  });
+
+  it("hides decorative parts from assistive tech", () => {
+    const { container } = render(<MultiRangeSlider min={0} max={100} tooltip marks />);
+    container.querySelectorAll(".rs-tooltip, .rs-marks").forEach((el) => expect(el).toHaveAttribute("aria-hidden", "true"));
+  });
+
+  it("keeps thumbs keyboard-focusable unless disabled", () => {
+    const { rerender } = render(<MultiRangeSlider min={0} max={100} />);
+    sliders()[0].focus();
+    expect(sliders()[0]).toHaveFocus();
+    rerender(<MultiRangeSlider min={0} max={100} disabled />);
+    expect(sliders()[0]).toBeDisabled();
+  });
+});

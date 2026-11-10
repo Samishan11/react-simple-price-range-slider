@@ -13,7 +13,7 @@
   --rs-track-color: #e2e8f0;
   --rs-range-color: #2563eb;
   --rs-track-height: 6px;
-  --rs-thumb-size: 20px;
+  --rs-thumb-size: 24px; /* >= 24px meets WCAG 2.5.8 target size */
   --rs-thumb-color: #fff;
   --rs-thumb-border-color: var(--rs-range-color);
   --rs-thumb-border-width: 2px;
@@ -22,7 +22,7 @@
   --rs-font-size: 0.875rem;
   --rs-tooltip-bg: #0f172a;
   --rs-tooltip-color: #fff;
-  --rs-mark-color: #94a3b8;
+  --rs-mark-color: #64748b;
 
   box-sizing: border-box;
   width: var(--rs-width);
@@ -76,6 +76,7 @@
   background: transparent;
   outline: none;
   pointer-events: none;
+  touch-action: pan-y; /* horizontal drags move the thumb, not the page */
   -webkit-appearance: none;
   appearance: none;
   -webkit-tap-highlight-color: transparent;
@@ -231,7 +232,7 @@
   --rs-value-color: #e2e8f0;
   --rs-tooltip-bg: #e2e8f0;
   --rs-tooltip-color: #0f172a;
-  --rs-mark-color: #64748b;
+  --rs-mark-color: #94a3b8;
 }
 @media (prefers-color-scheme: dark) {
   .rs-root[data-theme="auto"] {
@@ -241,6 +242,17 @@
     --rs-value-color: #e2e8f0;
     --rs-tooltip-bg: #e2e8f0;
     --rs-tooltip-color: #0f172a;
-    --rs-mark-color: #64748b;
+    --rs-mark-color: #94a3b8;
   }
+}
+
+/* ---- Windows high-contrast / forced colours ---- */
+@media (forced-colors: active) {
+  .rs-track { background: GrayText; }
+  .rs-range { background: Highlight; }
+  .rs-thumb::-webkit-slider-thumb { background: Canvas; border-color: Highlight; }
+  .rs-thumb::-moz-range-thumb { background: Canvas; border-color: Highlight; }
+  .rs-thumb:focus-visible::-webkit-slider-thumb { outline: 2px solid CanvasText; outline-offset: 2px; }
+  .rs-thumb:focus-visible::-moz-range-thumb { outline: 2px solid CanvasText; outline-offset: 2px; }
+  .rs-tooltip { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
 }
