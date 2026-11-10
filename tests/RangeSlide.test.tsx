@@ -148,3 +148,47 @@ describe("misc", () => {
     expect(parseFloat(root.style.getPropertyValue("--rs-right"))).toBeCloseTo(33.333, 2);
   });
 });
+
+describe("phase 3 features", () => {
+  it("applies theme and dir attributes", () => {
+    const { container } = render(<MultiRangeSlider min={0} max={10} theme="dark" dir="rtl" />);
+    const root = container.firstElementChild!;
+    expect(root).toHaveAttribute("data-theme", "dark");
+    expect(root).toHaveAttribute("dir", "rtl");
+  });
+
+  it("renders tooltips only when enabled, always-visible on request", () => {
+    const { container, rerender } = render(<MultiRangeSlider min={0} max={100} />);
+    expect(container.querySelectorAll(".rs-tooltip")).toHaveLength(0);
+    rerender(<MultiRangeSlider min={0} max={100} tooltip />);
+    expect(container.querySelectorAll(".rs-tooltip")).toHaveLength(2);
+    expect(container.querySelector("[data-show='always']")).toBeNull();
+    rerender(<MultiRangeSlider min={0} max={100} tooltip="always" />);
+    expect(container.querySelectorAll("[data-show='always']")).toHaveLength(2);
+  });
+
+  it("generates auto marks and marks active ones", () => {
+    const { container } = render(
+      <MultiRangeSlider min={0} max={100} marks={4} value={{ min: 25, max: 75 }} />
+    );
+    const marks = container.querySelectorAll(".rs-mark");
+    expect(marks).toHaveLength(5);
+    expect(Array.from(marks).map((m) => m.hasAttribute("data-active"))).toEqual([false, true, true, true, false]);
+  });
+
+  it("renders custom marks with labels", () => {
+    render(<MultiRangeSlider min={0} max={100} marks={[{ value: 0, label: "Low" }, { value: 100, label: "High" }, { value: 500, label: "Gone" }]} />);
+    expect(screen.getByText("Low")).toBeInTheDocument();
+    expect(screen.getByText("High")).toBeInTheDocument();
+    expect(screen.queryByText("Gone")).not.toBeInTheDocument();
+  });
+
+  it("supports classNames and styles slots", () => {
+    const { container } = render(
+      <MultiRangeSlider min={0} max={100} classNames={{ root: "r", thumb: "t", range: "g" }} styles={{ range: { opacity: 0.5 } }} />
+    );
+    expect(container.firstElementChild).toHaveClass("rs-root", "r");
+    expect(container.querySelectorAll(".rs-thumb.t")).toHaveLength(2);
+    expect(container.querySelector(".rs-range.g")).toHaveStyle({ opacity: "0.5" });
+  });
+});

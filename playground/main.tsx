@@ -4,38 +4,49 @@ import MultiRangeSlider, { RangeValues } from "../src";
 import "../src/styles.css";
 
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+const card: React.CSSProperties = { padding: "28px 24px 20px", borderRadius: 12, border: "1px solid #8884" };
+
+function Section({ title, dark, children }: { title: string; dark?: boolean; children: React.ReactNode }) {
+  return (
+    <section style={{ ...card, ...(dark ? { background: "#0b1220", color: "#e2e8f0" } : null) }}>
+      <h3 style={{ margin: "0 0 28px", fontSize: 14 }}>{title}</h3>
+      {children}
+    </section>
+  );
+}
 
 function App() {
   const [v, setV] = useState<RangeValues>({ min: 200, max: 800 });
   return (
-    <div style={{ padding: 48, fontFamily: "system-ui", display: "grid", gap: 40, maxWidth: 420 }}>
-      <h1>react-multi-input-rangeslider</h1>
-
-      <section>
-        <h3>Controlled + formatValue</h3>
-        <MultiRangeSlider min={0} max={1000} step={10} value={v} onChange={setV} formatValue={(n) => usd.format(n)} width="100%" />
+    <div style={{ padding: 32, fontFamily: "system-ui", display: "grid", gap: 20, maxWidth: 440 }}>
+      <Section title="Controlled · formatValue · tooltip on hover">
+        <MultiRangeSlider min={0} max={1000} step={10} value={v} onChange={setV} formatValue={(n) => usd.format(n)} tooltip width="100%" />
         <p>{JSON.stringify(v)} <button onClick={() => setV({ min: 0, max: 1000 })}>reset</button></p>
-      </section>
-
-      <section>
-        <h3>Uncontrolled, minGap 100</h3>
-        <MultiRangeSlider min={0} max={1000} minGap={100} defaultValue={{ min: 300, max: 600 }} />
-      </section>
-
-      <section>
-        <h3>Legacy props (rangeColor / trackColor)</h3>
-        <MultiRangeSlider min={0} max={100} rangeColor="#16a34a" trackColor="#bbf7d0" currencyText="€" />
-      </section>
-
-      <section>
-        <h3>CSS variables</h3>
-        <MultiRangeSlider min={0} max={100} style={{ "--rs-thumb-size": "28px", "--rs-track-height": "10px", "--rs-range-color": "#db2777" } as React.CSSProperties} />
-      </section>
-
-      <section>
-        <h3>Disabled</h3>
-        <MultiRangeSlider min={0} max={100} defaultValue={{ min: 20, max: 60 }} disabled />
-      </section>
+      </Section>
+      <Section title="Tooltip always + marks (auto)">
+        <MultiRangeSlider min={0} max={100} defaultValue={{ min: 25, max: 75 }} tooltip="always" marks width="100%" />
+      </Section>
+      <Section title="Custom marks">
+        <MultiRangeSlider min={0} max={100} defaultValue={{ min: 20, max: 80 }} width="100%" showValues={false}
+          marks={[{ value: 0, label: "Low" }, { value: 50, label: "Mid" }, { value: 100, label: "High" }]} />
+      </Section>
+      <Section title="Dark theme" dark>
+        <MultiRangeSlider min={0} max={100} defaultValue={{ min: 30, max: 70 }} theme="dark" tooltip="always" marks={4} width="100%" />
+      </Section>
+      <Section title="RTL">
+        <div dir="rtl">
+          <MultiRangeSlider min={0} max={100} defaultValue={{ min: 20, max: 60 }} dir="rtl" tooltip="always" marks width="100%" />
+        </div>
+      </Section>
+      <Section title="Legacy colours + CSS variables + slots">
+        <MultiRangeSlider min={0} max={100} rangeColor="#16a34a" trackColor="#bbf7d0" currencyText="€" width="100%" />
+        <div style={{ height: 16 }} />
+        <MultiRangeSlider min={0} max={100} width="100%" style={{ "--rs-thumb-size": "28px", "--rs-track-height": "10px", "--rs-range-color": "#db2777" } as React.CSSProperties}
+          classNames={{ value: "my-value" }} styles={{ value: { fontWeight: 800 } }} />
+      </Section>
+      <Section title="Disabled">
+        <MultiRangeSlider min={0} max={100} defaultValue={{ min: 20, max: 60 }} disabled width="100%" />
+      </Section>
     </div>
   );
 }

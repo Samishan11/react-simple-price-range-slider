@@ -3,7 +3,10 @@
  *
  *   --rs-width, --rs-track-color, --rs-range-color, --rs-track-height,
  *   --rs-thumb-size, --rs-thumb-color, --rs-thumb-border-color,
- *   --rs-thumb-border-width, --rs-focus-ring, --rs-value-color, --rs-font-size
+ *   --rs-thumb-border-width, --rs-focus-ring, --rs-value-color, --rs-font-size,
+ *   --rs-tooltip-bg, --rs-tooltip-color, --rs-mark-color
+ *
+ * Themes: data-theme="dark" (or "auto" to follow the OS) re-maps the colours.
  */
 .rs-root {
   --rs-width: 250px;
@@ -17,6 +20,9 @@
   --rs-focus-ring: 0 0 0 4px color-mix(in srgb, var(--rs-range-color) 28%, transparent);
   --rs-value-color: #334155;
   --rs-font-size: 0.875rem;
+  --rs-tooltip-bg: #0f172a;
+  --rs-tooltip-color: #fff;
+  --rs-mark-color: #94a3b8;
 
   box-sizing: border-box;
   width: var(--rs-width);
@@ -38,8 +44,7 @@
 /* The rail is inset by half a thumb so the fill lines up with thumb centres. */
 .rs-rail {
   position: absolute;
-  left: calc(var(--rs-thumb-size) / 2);
-  right: calc(var(--rs-thumb-size) / 2);
+  inset-inline: calc(var(--rs-thumb-size) / 2);
   top: 50%;
   height: var(--rs-track-height);
   transform: translateY(-50%);
@@ -52,13 +57,12 @@
   border-radius: 999px;
 }
 .rs-track {
-  left: 0;
-  right: 0;
+  inset-inline: 0;
   background: var(--rs-track-color);
 }
 .rs-range {
-  left: var(--rs-left);
-  right: var(--rs-right);
+  inset-inline-start: var(--rs-left);
+  inset-inline-end: var(--rs-right);
   background: var(--rs-range-color);
 }
 
@@ -140,4 +144,103 @@
 @media (prefers-reduced-motion: reduce) {
   .rs-thumb::-webkit-slider-thumb,
   .rs-thumb::-moz-range-thumb { transition: none; }
+}
+
+/* ---- tooltip ---- */
+.rs-tooltip {
+  position: absolute;
+  z-index: 6;
+  bottom: calc(100% + 8px);
+  inset-inline-start: calc(var(--rs-thumb-size) / 2 + (100% - var(--rs-thumb-size)) * var(--p) / 100);
+  transform: translateX(-50%) translateY(4px);
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--rs-tooltip-bg);
+  color: var(--rs-tooltip-color);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.rs-root[dir="rtl"] .rs-tooltip { transform: translateX(50%) translateY(4px); }
+.rs-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -4px;
+  border: 4px solid transparent;
+  border-top-color: var(--rs-tooltip-bg);
+}
+.rs-tooltip[data-show="always"],
+.rs-thumb:hover + .rs-tooltip,
+.rs-thumb:active + .rs-tooltip,
+.rs-thumb:focus-visible + .rs-tooltip {
+  opacity: 1;
+  transform: translateX(-50%);
+}
+.rs-root[dir="rtl"] .rs-tooltip[data-show="always"],
+.rs-root[dir="rtl"] .rs-thumb:hover + .rs-tooltip,
+.rs-root[dir="rtl"] .rs-thumb:active + .rs-tooltip,
+.rs-root[dir="rtl"] .rs-thumb:focus-visible + .rs-tooltip {
+  transform: translateX(50%);
+}
+
+/* ---- marks ---- */
+.rs-marks {
+  position: relative;
+  height: 2.25em;
+  margin-top: 4px;
+}
+.rs-mark {
+  position: absolute;
+  top: 0;
+  inset-inline-start: calc(var(--rs-thumb-size) / 2 + (100% - var(--rs-thumb-size)) * var(--p) / 100);
+  width: 0;
+  color: var(--rs-mark-color);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.rs-mark::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -1px;
+  width: 2px;
+  height: 6px;
+  border-radius: 1px;
+  background: currentColor;
+}
+.rs-mark[data-active] { color: var(--rs-range-color); }
+.rs-mark-label {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+/* ---- themes ---- */
+.rs-root[data-theme="dark"] {
+  --rs-track-color: #334155;
+  --rs-range-color: #60a5fa;
+  --rs-thumb-color: #0f172a;
+  --rs-value-color: #e2e8f0;
+  --rs-tooltip-bg: #e2e8f0;
+  --rs-tooltip-color: #0f172a;
+  --rs-mark-color: #64748b;
+}
+@media (prefers-color-scheme: dark) {
+  .rs-root[data-theme="auto"] {
+    --rs-track-color: #334155;
+    --rs-range-color: #60a5fa;
+    --rs-thumb-color: #0f172a;
+    --rs-value-color: #e2e8f0;
+    --rs-tooltip-bg: #e2e8f0;
+    --rs-tooltip-color: #0f172a;
+    --rs-mark-color: #64748b;
+  }
 }
