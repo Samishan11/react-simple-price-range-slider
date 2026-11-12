@@ -60,9 +60,21 @@ export type Orientation = "horizontal" | "vertical";
 /** `"any"` (or a non-positive number) means no stepping: every value is allowed. */
 export type Step = number | "any";
 
+/**
+ * What happens when a thumb meets its neighbour: it stops (`"block"`), pushes the neighbour
+ * along (`"push"`), or passes it (`"swap"`).
+ */
+export type Collision = "block" | "push" | "swap";
+
+/** Passed to `onDragStart` / `onDragEnd`. */
+export interface DragMeta {
+  /** Index of the dragged thumb, or `-1` when the whole range is dragged (`draggableRange`). */
+  thumb: number;
+}
+
 /** Passed to `onChange` / `onChangeEnd` alongside the value. */
 export interface ChangeMeta {
-  /** Index of the thumb that moved (0 = lowest value). */
+  /** Index of the thumb that moved (0 = lowest value), or `-1` when the whole range moved. */
   thumb: number;
   /**
    * What moved it: a pointer (drag or track press), a key, or a value set directly on the

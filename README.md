@@ -15,6 +15,8 @@ A small, accessible, themeable **range slider** for React with one, two or more 
 - Themeable with **CSS variables**; light / dark / auto themes
 - Value tooltips, tick marks (auto or custom labels)
 - Precise pointer handling: click the track to jump, thumbs can meet exactly, and overlapping thumbs separate in the direction you drag
+- Drag the whole range; thumbs that **push** or **swap** when they meet; lock single thumbs; read-only mode
+- Snap to marks; `Intl.NumberFormat` formatting (`format`, `locale`); a `ref` handle
 - Accessible: a native range input per thumb (screen readers, mobile swipe gestures, forms), full WAI-ARIA keyboard support, 24px targets, forced-colors and reduced-motion support
 - **Tailwind-ready**: utility classes on every part, an `unstyled` mode, and a cascade-layered stylesheet for Tailwind v4
 - Custom thumb and tooltip content (`renderThumb`, `renderTooltip`), or your own markup with the `useRangeSlider` hook
@@ -85,7 +87,15 @@ import { RangeSlider } from "react-multi-input-rangeslider";
 | `onChangeEnd` | `(value, { thumb, source }) => void` | — | Called once when a drag, key press or assistive-technology adjustment is committed. Handy for fetching. |
 | `step` | `number \| "any"` | `1` | Slider granularity. `"any"` allows every value. |
 | `largeStep` | `number` | ~10% of the range | Step for PageUp / PageDown and Shift + arrows. |
+| `onDragStart` / `onDragEnd` | `({ thumb }) => void` | — | A pointer drag of a thumb starts / ends (`thumb` is `-1` for the whole range). |
 | `minGap` | `number` | `0` | Minimum distance between neighbouring thumbs. `0` lets them meet. |
+| `collision` | `"block" \| "push" \| "swap"` | `"block"` | When a thumb meets its neighbour: it stops, pushes the neighbour along, or passes it (`minGap` doesn't apply to `"swap"`). |
+| `draggableRange` | `boolean` | `false` | Press the filled range and drag to move all thumbs together. |
+| `disabledThumbs` | `boolean[]` | — | Lock thumbs by index, e.g. `[true, false]`. Pressing a locked thumb does nothing. |
+| `readOnly` | `boolean` | `false` | Show the value but ignore input; thumbs stay focusable, so screen readers can read them. |
+| `snapToMarks` | `boolean` | `false` | Thumbs stop only at mark values (needs `marks`). |
+| `format` | `Intl.NumberFormatOptions` | — | Formats values, e.g. `{ style: "currency", currency: "EUR" }`. `formatValue` takes precedence. |
+| `locale` | `string \| string[]` | the browser's | Locale(s) for `format`, e.g. `"de-DE"`. |
 | `disabled` | `boolean` | `false` | Disable every thumb. |
 | `orientation` | `"horizontal" \| "vertical"` | `"horizontal"` | Vertical sliders have the minimum at the bottom; their length is `--rs-height`. |
 | `inverted` | `boolean` | `false` | Puts the maximum at the start: left (right in RTL), or the top when vertical. |
@@ -106,7 +116,7 @@ import { RangeSlider } from "react-multi-input-rangeslider";
 | `renderTooltip` | `(thumb) => ReactNode` | — | Content of each tooltip label instead of the formatted value. |
 | `width` | `string` | `250px` | Slider width (sets `--rs-width`). |
 | `rangeColor` / `trackColor` | `string` | — | Shortcuts for `--rs-range-color` / `--rs-track-color`. |
-| `currencyText` | `string` | `"$"` | Prefix used when `formatValue` isn't set. |
+| `currencyText` | `string` | `"$"` | Prefix used when neither `formatValue` nor `format` is set. |
 | `valueStyle` | `CSSProperties` | — | Inline style for the values row. |
 
 ## Theming
@@ -146,11 +156,12 @@ State attributes you can style (or target with Tailwind's `data-*` variants):
 
 | Part | Attributes |
 | --- | --- |
-| thumb | `data-index`, `data-active` (last used, drawn on top), `data-hover`, `data-dragging`, `data-focus-visible` |
+| thumb | `data-index`, `data-active` (last used, drawn on top), `data-hover`, `data-dragging`, `data-focus-visible`, `data-disabled` |
+| range (fill) | `data-draggable`, `data-hover`, `data-dragging` |
 | tooltip | `data-visible` (shown: always, or on hover / drag / keyboard focus), `data-merged` (folded into a shared label) |
 | mark | `data-active` (inside the selected range) |
 | control | `data-hover`, `data-dragging` |
-| root | `data-orientation`, `data-disabled`, `data-tooltip` |
+| root | `data-orientation`, `data-disabled`, `data-readonly`, `data-tooltip` |
 
 Thumbs can be any size, set by `--rs-thumb-size` or by a class: the slider measures the rendered thumb, so positions and dragging always line up with it.
 
@@ -205,6 +216,21 @@ Tailwind v3 has no native cascade layers: use `unstyled`, or the `!` modifier (`
 ```
 
 Both renderers get `{ index, value, formatted, active, hover, dragging, focusVisible, disabled }`.
+
+## Ref
+
+A `ref` gives you a handle that speaks the slider's value shape:
+
+```tsx
+const slider = useRef<RangeSliderHandle<number[]>>(null);
+
+<RangeSlider ref={slider} defaultValue={[20, 80]} />;
+
+slider.current?.getValue(); // [20, 80]
+slider.current?.setValue([0, 100]); // uncontrolled sliders only
+slider.current?.focus(1); // keyboard focus on the upper thumb
+slider.current?.element; // the root <div>
+```
 
 ## Keyboard
 

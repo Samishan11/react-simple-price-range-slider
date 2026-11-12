@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { act, render, screen, fireEvent } from "@testing-library/react";
-import MultiRangeSlider, { RangeSlider, RangeValues } from "../src";
+import MultiRangeSlider, { RangeSlider, RangeValues, type RangeSliderHandle } from "../src";
 
 const sliders = () => screen.getAllByRole("slider") as HTMLInputElement[];
 const values = () => sliders().map((s) => Number(s.value));
@@ -318,6 +318,100 @@ describe("theme, tooltips, marks, slots", () => {
     expect(container.firstElementChild).toHaveClass("rs-root", "r");
     expect(container.querySelectorAll(".rs-thumb.t")).toHaveLength(2);
     expect(container.querySelector(".rs-range.g")).toHaveStyle({ opacity: "0.5" });
+  });
+});
+
+describe("collisions, locks and read-only", () => {
+  it("push: a thumb pushes its neighbour along", () => {
+    render(<RangeSlider defaultValue={[20, 21]} collision="push" />);
+    key(0, "ArrowRight");
+    key(0, "ArrowRight");
+    expect(values()).toEqual([22, 22]);
+  });
+
+  it("block (default): a thumb stops at its neighbour", () => {
+    render(<RangeSlider defaultValue={[20, 21]} />);
+    key(0, "ArrowRight");
+    key(0, "ArrowRight");
+    expect(values()).toEqual([21, 21]);
+  });
+
+  it("swap: a thumb passes its neighbour, and keyboard focus follows it", () => {
+    render(<RangeSlider defaultValue={[20, 21]} collision="swap" />);
+    act(() => sliders()[0].focus());
+    key(0, "ArrowRight"); // meets the neighbour: now the upper thumb
+    expect(sliders()[1]).toHaveFocus();
+    key(1, "ArrowRight");
+    expect(values()).toEqual([21, 22]);
+  });
+
+  it("disabledThumbs locks a thumb: not focusable, and push stops at it", () => {
+    const { container } = render(
+      <RangeSlider defaultValue={[20, 50, 80]} collision="push" disabledThumbs={[false, true, false]} />
+    );
+    expect(sliders()[1]).toBeDisabled();
+    expect(container.querySelectorAll(".rs-thumb")[1]).toHaveAttribute("data-disabled");
+    key(0, "End");
+    expect(values()).toEqual([50, 50, 80]);
+  });
+
+  it("readOnly shows the value, stays focusable, and ignores input", () => {
+    const onChange = vi.fn();
+    const { container } = render(<RangeSlider defaultValue={30} readOnly onChange={onChange} />);
+    expect(sliders()[0]).not.toBeDisabled();
+    expect(sliders()[0]).toHaveAttribute("aria-readonly", "true");
+    expect(container.firstElementChild).toHaveAttribute("data-readonly");
+    key(0, "ArrowRight");
+    change(0, 90);
+    expect(values()).toEqual([30]);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("marks and formatting", () => {
+  it("snapToMarks: thumbs stop only at mark values", () => {
+    const marks = [0, 25, 60, 100].map((value) => ({ value }));
+    render(<RangeSlider defaultValue={25} marks={marks} snapToMarks />);
+    key(0, "ArrowRight");
+    expect(values()).toEqual([60]);
+    key(0, "ArrowLeft");
+    expect(values()).toEqual([25]);
+    change(0, 70); // assistive technology: nearest mark
+    expect(values()).toEqual([60]);
+  });
+
+  it("format and locale format through Intl.NumberFormat", () => {
+    render(
+      <RangeSlider defaultValue={1000} max={2000} format={{ style: "currency", currency: "EUR", maximumFractionDigits: 0 }} locale="de-DE" />
+    );
+    expect(sliders()[0].getAttribute("aria-valuetext")).toMatch(/^1\.000\s€$/);
+  });
+
+  it("formatValue still wins over format", () => {
+    render(<RangeSlider defaultValue={5} format={{ style: "percent" }} formatValue={(n) => `${n} pts`} />);
+    expect(sliders()[0]).toHaveAttribute("aria-valuetext", "5 pts");
+  });
+});
+
+describe("ref", () => {
+  it("reads and sets the value in the slider's shape, focuses thumbs, exposes the root", () => {
+    const ref = React.createRef<RangeSliderHandle<number[]>>();
+    render(<RangeSlider ref={ref} defaultValue={[20, 80]} />);
+    expect(ref.current!.getValue()).toEqual([20, 80]);
+    act(() => ref.current!.setValue([30, 70]));
+    expect(values()).toEqual([30, 70]);
+    act(() => ref.current!.focus(1));
+    expect(sliders()[1]).toHaveFocus();
+    expect(ref.current!.element).toHaveClass("rs-root");
+  });
+
+  it("MultiRangeSlider's handle speaks { min, max }; controlled sliders ignore setValue", () => {
+    const ref = React.createRef<RangeSliderHandle<RangeValues>>();
+    const { rerender } = render(<MultiRangeSlider ref={ref} min={0} max={100} />);
+    expect(ref.current!.getValue()).toEqual({ min: 0, max: 100 });
+    rerender(<MultiRangeSlider ref={ref} min={0} max={100} value={{ min: 10, max: 90 }} />);
+    act(() => ref.current!.setValue({ min: 40, max: 60 }));
+    expect(values()).toEqual([10, 90]);
   });
 });
 

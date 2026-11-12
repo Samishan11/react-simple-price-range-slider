@@ -57,7 +57,8 @@
   -webkit-tap-highlight-color: transparent;
 }
 .rs-control[data-hover] { cursor: grab; }
-.rs-control[data-dragging] { cursor: grabbing; }
+.rs-control[data-dragging],
+.rs-control[data-dragging] * { cursor: grabbing; }
 
 /* The track spans the thumbs' travel (inset by half a thumb), so the fill meets thumb centres. */
 .rs-track {
@@ -69,6 +70,7 @@
   border-radius: 999px;
   background: var(--rs-range-color);
 }
+.rs-range[data-draggable] { cursor: grab; }
 
 .rs-thumb {
   z-index: 2;
@@ -85,8 +87,17 @@
 .rs-thumb[data-dragging] { transform: scale(1.18); }
 .rs-thumb[data-focus-visible] { box-shadow: var(--rs-focus-ring), var(--rs-thumb-shadow); }
 
+.rs-thumb[data-disabled] { cursor: not-allowed; }
+/* A locked thumb turns muted but stays opaque (the fill mustn't show through); a fully
+   disabled slider fades as a whole instead. */
+.rs-root:not([data-disabled]) .rs-thumb[data-disabled] {
+  border-color: var(--rs-mark-color);
+  box-shadow: none;
+}
+
 .rs-root[data-disabled] { opacity: 0.5; }
 .rs-root[data-disabled] .rs-control { cursor: not-allowed; }
+.rs-root[data-readonly] .rs-control { cursor: default; }
 
 .rs-values {
   display: flex;

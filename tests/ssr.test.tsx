@@ -16,9 +16,10 @@ describe("server rendering", () => {
 
   it("positions thumbs and fill inline and exactly (no rounding)", () => {
     const html = renderToString(<RangeSlider min={0} max={3} value={[1, 2]} />);
-    // fill: starts at 1/3, ends 1/3 from the end
-    expect(html).toMatch(/class="rs-range" style="[^"]*inset-inline-start:33\.333333333333\d*%/);
-    expect(html).toMatch(/class="rs-range" style="[^"]*inset-inline-end:33\.333333333333\d*%/);
+    // fill: starts at 1/3, ends 1/3 from the end (attributes in any order)
+    const fill = html.match(/<div[^>]*class="rs-range"[^>]*>/)![0];
+    expect(fill).toMatch(/inset-inline-start:33\.333333333333\d*%/);
+    expect(fill).toMatch(/inset-inline-end:33\.333333333333\d*%/);
     // thumbs: centre at size/2 + (100% - size) * fraction
     expect(html).toContain("inset-inline-start:calc(var(--rs-thumb-size, 24px) / 2 + (100% - var(--rs-thumb-size, 24px)) * 0.3333333333333333)");
   });
