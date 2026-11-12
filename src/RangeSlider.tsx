@@ -1,6 +1,7 @@
 import React, { type CSSProperties, type ReactElement } from "react";
 import { fromValues, shapeOf, toValues, type Shape } from "./engine";
 import { useRangeSlider } from "./useRangeSlider";
+import { useTooltipLayout } from "./useTooltipLayout";
 import type { ChangeMeta, Mark, Orientation, RangeValues, SliderSlot, SliderValue, Step, ValueOf } from "./types";
 
 export interface RangeSliderProps<V extends SliderValue = number[]> {
@@ -144,6 +145,16 @@ function SliderView({
   const fmt = (n: number) => (formatValue ? formatValue(n) : `${currencyText}${n}`);
   const cx = (slot: SliderSlot, base: string) => [base, classNames[slot]].filter(Boolean).join(" ");
   const tipMode = tooltip === true ? "hover" : tooltip || undefined;
+  const tips = useTooltipLayout({
+    enabled: !!tipMode,
+    merge: tipMode === "always",
+    vertical: orientation === "vertical",
+    count,
+    control: s.controlRef,
+  });
+  const mergedInto = new Set(tips.layout.merged.flat());
+  /** One label for a merged group: "$480 – $520", or a single value when the thumbs coincide. */
+  const mergedText = (group: number[]) => Array.from(new Set(group.map((i) => fmt(values[i])))).join(" – ");
   const markList = resolveMarks(marks, min, max);
   const inRange = (v: number) => (count > 1 ? v >= values[0] && v <= values[count - 1] : v <= values[0]);
 
@@ -197,17 +208,51 @@ function SliderView({
               </div>
               {tipMode && (
                 <div
+                  ref={(el) => {
+                    tips.anchors.current[i] = el;
+                  }}
                   className={cx("tooltip", "rs-tooltip")}
                   style={{ ...s.alongStyle(s.fractions[i]), ...styles.tooltip }}
                   data-show={tipMode === "always" ? "always" : undefined}
+                  data-merged={mergedInto.has(i) ? "" : undefined}
                   aria-hidden="true"
                 >
-                  <span className="rs-tooltip-label">{fmt(v)}</span>
+                  <span
+                    ref={(el) => {
+                      tips.labels.current[i] = el;
+                    }}
+                    className="rs-tooltip-label"
+                    style={tips.shiftStyle(tips.layout.shifts[i])}
+                  >
+                    {fmt(v)}
+                  </span>
                 </div>
               )}
             </React.Fragment>
           );
         })}
+        {tips.layout.merged.map((group, gi) => (
+          <div
+            key={group.join("-")}
+            className={cx("tooltip", "rs-tooltip rs-tooltip-merged")}
+            style={{
+              ...s.alongStyle((s.fractions[group[0]] + s.fractions[group[group.length - 1]]) / 2),
+              ...styles.tooltip,
+            }}
+            data-show="always"
+            aria-hidden="true"
+          >
+            <span
+              ref={(el) => {
+                tips.mergedLabels.current[gi] = el;
+              }}
+              className="rs-tooltip-label"
+              style={tips.shiftStyle(tips.layout.mergedShifts[gi])}
+            >
+              {mergedText(group)}
+            </span>
+          </div>
+        ))}
       </div>
       {markList.length > 0 && (
         <div className={cx("marks", "rs-marks")} style={styles.marks} aria-hidden="true">

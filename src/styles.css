@@ -120,7 +120,9 @@
   border: 4px solid transparent;
   border-top-color: var(--rs-tooltip-bg);
 }
+/* Nudged inward (left/top, set by the component) to stay inside the slider; the arrow stays put. */
 .rs-tooltip-label {
+  position: relative;
   padding: 3px 8px;
   border-radius: 6px;
   background: var(--rs-tooltip-bg);
@@ -137,6 +139,8 @@
   opacity: 1;
   transform: none;
 }
+/* Close always-on tooltips merge into one .rs-tooltip-merged; the thumbs' own stay measurable but unseen. */
+.rs-tooltip[data-merged] { visibility: hidden; }
 /* Always-on tooltips get room above the slider instead of covering what's there. */
 .rs-root[data-tooltip="always"]:not([data-orientation="vertical"]) {
   padding-top: calc(var(--rs-tooltip-font-size) * 1.4 + 6px + var(--rs-tooltip-offset));

@@ -90,7 +90,7 @@ import { RangeSlider } from "react-multi-input-rangeslider";
 | `inverted` | `boolean` | `false` | Puts the maximum at the start: left (right in RTL), or the top when vertical. |
 | `formatValue` | `(n: number) => string` | `` `${currencyText}${n}` `` | Formats the displayed values, tooltips, labels and `aria-valuetext`. |
 | `showValues` | `boolean` | `true` | Show the values row under the slider. |
-| `tooltip` | `boolean \| "hover" \| "always"` | `false` | Value bubble over each thumb. `true` = `"hover"` (also on keyboard focus and drag). `"always"` reserves space above the slider. |
+| `tooltip` | `boolean \| "hover" \| "always"` | `false` | Value bubble over each thumb. `true` = `"hover"` (also on keyboard focus and drag). `"always"` reserves space above the slider, and merges the tooltips of close thumbs into one (`$480 – $520`). Tooltips never overflow the slider's ends. |
 | `marks` | `boolean \| number \| { value, label? }[]` | — | Tick marks. `true` = 4 intervals; a number = that many; or an array of custom marks. |
 | `theme` | `"light" \| "dark" \| "auto"` | light | `"auto"` follows the OS colour scheme. |
 | `dir` | `"ltr" \| "rtl"` | — | Text direction. Arrow keys follow it. |
