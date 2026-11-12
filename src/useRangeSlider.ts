@@ -1,25 +1,29 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import {
+  applyMove,
   centerAt,
   fractionAt,
   keyCommand,
   largeStepCount,
-  moveThumb,
   normalize,
   pickFromStack,
   pressAt,
   settle,
+  shiftAll,
   snapToStop,
   stepFrom,
   type Layout,
+  type StopRule,
 } from "./engine";
-import type { ChangeMeta, Orientation, Step } from "./types";
+import type { ChangeMeta, Collision, DragMeta, Orientation, Step } from "./types";
 
 export interface UseRangeSliderOptions {
   min: number;
   max: number;
   /** Granularity. `"any"` allows every value. Default `1`. */
   step?: Step;
+  /** Only these values are allowed (e.g. the marks); takes precedence over `step`. */
+  stops?: readonly number[];
   /** Controlled thumb values (clamped into range and sorted). */
   values?: readonly number[];
   /** Initial thumb values when uncontrolled. Default `[min, max]`. */
@@ -27,11 +31,23 @@ export interface UseRangeSliderOptions {
   onChange?: (values: number[], meta: ChangeMeta) => void;
   /** Fires when a drag, key press or assistive-technology adjustment is committed. */
   onChangeEnd?: (values: number[], meta: ChangeMeta) => void;
+  /** A pointer starts dragging a thumb (or the range: `thumb` is -1). */
+  onDragStart?: (meta: DragMeta) => void;
+  /** That drag ends. */
+  onDragEnd?: (meta: DragMeta) => void;
   /** Minimum distance between neighbouring thumbs. Default `0`: thumbs can meet. */
   minGap?: number;
+  /** When a thumb meets its neighbour: stop (`"block"`, default), push it, or pass it (`"swap"`). */
+  collision?: Collision;
   /** Size of a PageUp/PageDown or Shift+Arrow step. Default: about 10% of the range. */
   largeStep?: number;
   disabled?: boolean;
+  /** Thumbs that can't move, by index; e.g. `[true, false]` locks the lowest. */
+  disabledThumbs?: readonly boolean[];
+  /** Shows the values but ignores input; the thumbs stay focusable so screen readers can read them. */
+  readOnly?: boolean;
+  /** Pressing the filled range and dragging moves all thumbs together. */
+  draggableRange?: boolean;
   orientation?: Orientation;
   /** Puts the maximum at the start: left (right in RTL), or top when vertical. */
   inverted?: boolean;
@@ -39,6 +55,9 @@ export interface UseRangeSliderOptions {
 
 /** How far (px) the pointer must move before a press on overlapping thumbs picks one. */
 const PICK_DISTANCE = 3;
+
+/** `Drag.thumb` value while the whole range is being dragged. */
+const RANGE = -1;
 
 /**
  * Focus for a thumb grabbed with the pointer: keyboard control continues on it, without a focus
@@ -77,7 +96,7 @@ const HIDDEN_INPUT: CSSProperties = {
 
 interface Drag {
   pointerId: number;
-  /** The thumb being dragged; null while a press on overlapping thumbs waits for movement. */
+  /** The dragged thumb, RANGE for the whole range, or null while overlapping thumbs wait for movement. */
   thumb: number | null;
   /** Thumbs under the pointer when it went down (used while `thumb` is null). */
   stack: number[];
@@ -85,6 +104,10 @@ interface Drag {
   start: number;
   /** Pointer distance from the grabbed thumb's centre, so the thumb never jumps to the pointer. */
   offset: number;
+  /** Values when a range drag started: it moves them all by the pointer's distance. */
+  startValues: number[];
+  /** onDragStart has fired (so onDragEnd must). */
+  started: boolean;
   layout: Layout;
 }
 
@@ -108,20 +131,27 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
     step = 1,
     minGap,
     largeStep,
+    collision = "block",
     disabled = false,
+    readOnly = false,
     orientation = "horizontal",
     inverted = false,
   } = options;
   const vertical = orientation === "vertical";
   const controlled = options.values !== undefined;
+  /** Where thumbs may stop: the listed values, or the step grid. */
+  const rule: StopRule = options.stops ?? step;
 
   const [inner, setInner] = useState<number[]>(() => normalize(options.defaultValues ?? [min, max], min, max));
   const values = normalize(controlled ? options.values! : inner, min, max);
   const count = values.length;
+  const locked = values.map((_, i) => disabled || !!options.disabledThumbs?.[i]);
+  const inert = disabled || readOnly;
+  const rangeDraggable = !!options.draggableRange && count > 1 && !inert && !locked.some(Boolean) && !options.stops;
 
   const [lastUsed, setLastUsed] = useState(count - 1);
-  const [hover, setHover] = useState<number | null>(null);
-  const [dragging, setDragging] = useState<number | "pending" | null>(null);
+  const [hover, setHover] = useState<number | "range" | null>(null);
+  const [dragging, setDragging] = useState<number | "pending" | "range" | null>(null);
   const [focusVisible, setFocusVisible] = useState<number | null>(null);
   const active = Math.min(lastUsed, count - 1);
 
@@ -169,8 +199,12 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
     if (!controlled) setInner(next);
     options.onChange?.(next, meta);
   };
-  const moveTo = (thumb: number, target: number, source: ChangeMeta["source"]) =>
-    commit(moveThumb(values, thumb, target, bounds), { thumb, source });
+  /** Moves a thumb under the collision rule; returns its index afterwards (it changes on a swap). */
+  const moveTo = (thumb: number, target: number, source: ChangeMeta["source"]) => {
+    const moved = applyMove(values, thumb, target, bounds, collision, locked);
+    commit(moved.values, { thumb: moved.index, source });
+    return moved.index;
+  };
   const finish = () => options.onChangeEnd?.(latest.current, lastMeta.current);
   const latestFinish = useRef(finish);
   latestFinish.current = finish;
@@ -197,35 +231,53 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
   };
   const posOf = (e: { clientX: number; clientY: number }) => (vertical ? e.clientY : e.clientX);
   const centersFor = (l: Layout) => fractions.map((f) => centerAt(f, l));
-  const valueAt = (pos: number, l: Layout) => snapToStop(min + fractionAt(pos, l) * (max - min), min, max, step);
+  const valueAt = (pos: number, l: Layout) => snapToStop(min + fractionAt(pos, l) * (max - min), min, max, rule);
 
   const pointerFocusing = useRef(false);
-  const grab = (thumb: number) => {
-    lastMeta.current = { thumb, source: "pointer" };
-    setLastUsed(thumb);
-    setDragging(thumb);
+  const focusThumb = (thumb: number) => {
     pointerFocusing.current = true;
     inputs.current[thumb]?.focus(POINTER_FOCUS);
     pointerFocusing.current = false;
   };
+  const grab = (d: Drag, thumb: number) => {
+    d.thumb = thumb;
+    d.started = true;
+    lastMeta.current = { thumb, source: "pointer" };
+    setLastUsed(thumb);
+    setDragging(thumb);
+    focusThumb(thumb);
+    options.onDragStart?.({ thumb });
+  };
+  const release = (d: Drag) => {
+    if (d.started) options.onDragEnd?.({ thumb: d.thumb ?? RANGE });
+  };
 
   const trackHover = (e: React.PointerEvent<HTMLElement>) => {
-    if (e.pointerType !== "mouse" || disabled) return;
+    if (e.pointerType !== "mouse" || inert) return;
     const l = layoutOf(e.currentTarget);
     const c = centersFor(l);
     const pos = posOf(e);
-    // Where thumbs overlap, the one drawn on top (the last used) wins.
-    const order = [active, ...values.map((_, i) => i).filter((i) => i !== active)];
-    const next = order.find((i) => Math.abs(pos - c[i]) <= l.size / 2) ?? null;
+    // Where thumbs overlap, the one drawn on top (the last used) wins; locked thumbs don't react.
+    const order = [active, ...values.map((_, i) => i).filter((i) => i !== active)].filter((i) => !locked[i]);
+    let next: number | "range" | null = order.find((i) => Math.abs(pos - c[i]) <= l.size / 2) ?? null;
+    if (next === null && rangeDraggable && pos > Math.min(c[0], c[count - 1]) && pos < Math.max(c[0], c[count - 1]))
+      next = "range";
     if (next !== hover) setHover(next);
   };
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     // Only the primary pointer drags (a second finger is ignored), and only the main mouse button.
-    if (disabled || !e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
+    if (inert || !e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
     const l = layoutOf(e.currentTarget);
     if (l.length <= l.size) return; // not laid out (hidden, or a test DOM)
-    if (drag.current) finish(); // a previous drag whose release we never saw
+    const c = centersFor(l);
+    const pos = posOf(e);
+    const press = pressAt(pos, c, l.size / 2, { reversed: l.reversed, locked, range: rangeDraggable });
+    if (press.kind === "none") return;
+    if (drag.current) {
+      release(drag.current); // a previous drag whose release we never saw
+      finish();
+    }
     e.preventDefault(); // no text selection; focus moves to the grabbed thumb instead
     setHover(null);
     setFocusVisible(null);
@@ -234,20 +286,24 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
     } catch {
       // the pointer is already gone
     }
-    const c = centersFor(l);
-    const pos = posOf(e);
-    const press = pressAt(pos, c, l.size / 2, l.reversed);
-    const d: Drag = { pointerId: e.pointerId, thumb: null, stack: [], start: pos, offset: 0, layout: l };
+    const d: Drag = { pointerId: e.pointerId, thumb: null, stack: [], start: pos, offset: 0, startValues: values, started: false, layout: l };
     drag.current = d;
     if (press.kind === "stack") {
       d.stack = press.indices;
       setDragging("pending");
       return;
     }
-    d.thumb = press.index;
-    grab(press.index);
+    if (press.kind === "range") {
+      d.thumb = RANGE;
+      d.started = true;
+      lastMeta.current = { thumb: RANGE, source: "pointer" };
+      setDragging("range");
+      options.onDragStart?.({ thumb: RANGE });
+      return;
+    }
+    grab(d, press.index);
     if (press.kind === "thumb") d.offset = pos - c[press.index];
-    else moveTo(press.index, valueAt(pos, l), "pointer"); // bare track: jump there
+    else d.thumb = moveTo(press.index, valueAt(pos, l), "pointer"); // bare track: jump there
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -255,15 +311,28 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
     if (!d) return trackHover(e);
     if (e.pointerId !== d.pointerId) return;
     const pos = posOf(e);
+    if (d.thumb === RANGE) {
+      // The whole range follows the pointer, in whole steps, keeping its spacing.
+      const delta = (fractionAt(pos, d.layout, true) - fractionAt(d.start, d.layout, true)) * (max - min);
+      const s = bounds.step > 0 ? bounds.step : 0;
+      commit(shiftAll(d.startValues, s ? Math.round(delta / s) * s : delta, bounds), { thumb: RANGE, source: "pointer" });
+      return;
+    }
     if (d.thumb === null) {
       const delta = pos - d.start;
       if (Math.abs(delta) < PICK_DISTANCE) return;
       const thumb = pickFromStack(d.stack, delta > 0 !== d.layout.reversed);
-      d.thumb = thumb;
       d.offset = d.start - centersFor(d.layout)[thumb];
-      grab(thumb);
+      grab(d, thumb);
     }
-    moveTo(d.thumb, valueAt(pos - d.offset, d.layout), "pointer");
+    const now = moveTo(d.thumb!, valueAt(pos - d.offset, d.layout), "pointer");
+    if (now !== d.thumb) {
+      // Swapped past a neighbour: keep dragging (and focusing) the same visual thumb.
+      d.thumb = now;
+      setLastUsed(now);
+      setDragging(now);
+      focusThumb(now);
+    }
   };
 
   const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -272,6 +341,7 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
     drag.current = null;
     setDragging(null);
     trackHover(e); // the pointer may have been released away from the thumb
+    release(d);
     finish();
   };
 
@@ -281,16 +351,23 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
     const rtl = !vertical && isRtl(e.currentTarget);
     const command = keyCommand(e.key, {
       shift: e.shiftKey,
-      large: largeStepCount(min, max, step, largeStep),
+      large: largeStepCount(min, max, rule, largeStep),
       flipLeftRight: !vertical && rtl !== inverted,
       flipUpDown: vertical && inverted,
     });
     if (!command) return;
-    e.preventDefault();
+    e.preventDefault(); // the slider handles the key (and a read-only one swallows it)
     setFocusVisible(thumb);
+    if (inert || locked[thumb]) return;
     const target =
-      "to" in command ? (command.to === "min" ? min : max) : stepFrom(values[thumb], command.steps, min, max, step);
-    moveTo(thumb, target, "keyboard");
+      "to" in command ? (command.to === "min" ? min : max) : stepFrom(values[thumb], command.steps, min, max, rule);
+    const now = moveTo(thumb, target, "keyboard");
+    if (now !== thumb) {
+      // Swapped past a neighbour: keyboard focus follows the thumb.
+      setLastUsed(now);
+      setFocusVisible(now);
+      inputs.current[now]?.focus();
+    }
   };
 
   // ---- prop getters --------------------------------------------------------------------------
@@ -312,16 +389,31 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
     fractions,
     orientation,
     disabled,
+    readOnly,
+    /** Per thumb: can't move (disabled, or listed in `disabledThumbs`). */
+    locked,
     /** Index of the thumb used last (drawn on top). */
     active,
     /** The control element (set through `getControlProps`), e.g. for measuring. */
     controlRef,
+    /** The hovered thumb, `"range"` for a draggable range, or null. */
     hover,
+    /** The dragged thumb, `"range"`, `"pending"` (overlapping thumbs, before the first move) or null. */
     dragging,
     focusVisible,
     alongStyle,
     /** The thumb diameter as a CSS length (measured once mounted). */
     thumbSize: size,
+
+    /** Moves keyboard focus to a thumb. */
+    focus: (thumb = 0) => inputs.current[thumb]?.focus(),
+    blur: () => inputs.current.forEach((el) => el?.blur()),
+    /** The latest values, including a change not rendered yet. */
+    getValues: () => latest.current.slice(),
+    /** Sets the values of an uncontrolled slider (no-op when controlled: update `values`). */
+    setValues: (next: readonly number[]) => {
+      if (!controlled) setInner(normalize(next, min, max));
+    },
 
     getControlProps: () => ({
       ref: controlRef,
@@ -360,6 +452,9 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
             [inverted ? "insetInlineEnd" : "insetInlineStart"]: percent(lo),
             [inverted ? "insetInlineStart" : "insetInlineEnd"]: percent(1 - hi),
           }) as CSSProperties,
+      "data-draggable": attr(rangeDraggable),
+      "data-hover": attr(hover === "range"),
+      "data-dragging": attr(dragging === "range"),
     }),
 
     getThumbProps: (i: number) => ({
@@ -376,8 +471,9 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
       "data-index": i,
       "data-active": attr(i === active),
       "data-hover": attr(i === hover),
-      "data-dragging": attr(i === dragging),
+      "data-dragging": attr(i === dragging || dragging === "range"),
       "data-focus-visible": attr(i === focusVisible),
+      "data-disabled": attr(locked[i]),
     }),
 
     getInputProps: (i: number) => ({
@@ -390,14 +486,16 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
       // The thumbs snap themselves; "any" keeps the browser from re-snapping (e.g. an off-grid max).
       step: "any",
       value: values[i],
-      disabled,
+      disabled: locked[i],
+      "aria-readonly": readOnly || undefined,
       "aria-orientation": vertical ? ("vertical" as const) : undefined,
       style: HIDDEN_INPUT,
-      onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
-        moveTo(i, settle(Number(e.target.value), values[i], min, max, step), "input"),
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!inert && !locked[i]) moveTo(i, settle(Number(e.target.value), values[i], min, max, rule), "input");
+      },
       onKeyDown: onKeyDown(i),
       onKeyUp: (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (COMMIT_KEYS.has(e.key)) finish();
+        if (COMMIT_KEYS.has(e.key) && !inert) finish();
       },
       onFocus: (e: React.FocusEvent<HTMLInputElement>) => {
         setLastUsed(i);

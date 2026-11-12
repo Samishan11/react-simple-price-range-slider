@@ -1,9 +1,20 @@
-import React, { type CSSProperties, type ReactElement, type ReactNode } from "react";
+import React, {
+  forwardRef,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  type CSSProperties,
+  type ReactElement,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { fromValues, shapeOf, toValues, type Shape } from "./engine";
 import { useRangeSlider } from "./useRangeSlider";
-import { useTooltipLayout } from "./useTooltipLayout";
+import { useMarkLayout, useTooltipLayout } from "./useTooltipLayout";
 import type {
   ChangeMeta,
+  Collision,
+  DragMeta,
   Mark,
   Orientation,
   RangeValues,
@@ -30,19 +41,43 @@ export interface RangeSliderProps<V extends SliderValue = number[]> {
   onChange?: (value: ValueOf<V>, meta: ChangeMeta) => void;
   /** Fires once when a drag, key press or assistive-technology adjustment is committed. Handy for fetching. */
   onChangeEnd?: (value: ValueOf<V>, meta: ChangeMeta) => void;
+  /** A pointer starts dragging a thumb (`thumb` is its index) or the whole range (`thumb` is -1). */
+  onDragStart?: (meta: DragMeta) => void;
+  /** That drag ends. */
+  onDragEnd?: (meta: DragMeta) => void;
   /** Granularity. `"any"` allows every value. Default `1`. */
   step?: Step;
+  /** Thumbs stop only at mark values (like a step of "the marks"). Needs `marks`. */
+  snapToMarks?: boolean;
   /** Minimum distance between neighbouring thumbs. Default `0`: the thumbs can meet. */
   minGap?: number;
+  /**
+   * When a thumb meets its neighbour: it stops (`"block"`, default), pushes the neighbour along
+   * (`"push"`), or passes it (`"swap"`; `minGap` doesn't apply).
+   */
+  collision?: Collision;
   /** Size of a PageUp/PageDown or Shift+Arrow step. Default: about 10% of the range. */
   largeStep?: number;
   disabled?: boolean;
+  /** Thumbs that can't move, by index; e.g. `[true, false]` locks the lowest. */
+  disabledThumbs?: readonly boolean[];
+  /** Shows the value but ignores input; thumbs stay focusable, so screen readers can read them. */
+  readOnly?: boolean;
+  /** Press the filled range and drag to move all thumbs together. */
+  draggableRange?: boolean;
   /** Default `"horizontal"`. Vertical sliders have the minimum at the bottom. */
   orientation?: Orientation;
   /** Puts the maximum at the start: left (right in RTL), or the top when vertical. */
   inverted?: boolean;
   /** Formats the values shown in labels, tooltips and marks, and read by screen readers. */
   formatValue?: (value: number) => string;
+  /**
+   * `Intl.NumberFormat` options for the shown values, e.g. `{ style: "currency", currency: "EUR" }`.
+   * `formatValue` takes precedence.
+   */
+  format?: Intl.NumberFormatOptions;
+  /** Locale(s) for `format`, e.g. `"de-DE"`. Default: the browser's. */
+  locale?: string | string[];
   /** Show the values row under the slider. Default `true`. */
   showValues?: boolean;
   /** Form field name: one thumb submits `name`, two submit `${name}-min` / `${name}-max`, more submit `name` once per thumb. */
@@ -86,12 +121,25 @@ export interface RangeSliderProps<V extends SliderValue = number[]> {
   width?: string;
   /** Inline style for the values row. */
   valueStyle?: CSSProperties;
-  /** Prefix for displayed values when `formatValue` is not set. Default `"$"`. */
+  /** Prefix for displayed values when neither `formatValue` nor `format` is set. Default `"$"`. */
   currencyText?: string;
 }
 
 /** Props of the 2.x-compatible `MultiRangeSlider`, whose values default to `{ min, max }`. */
 export type MultiRangeSliderProps = RangeSliderProps<RangeValues>;
+
+/** What a `ref` on the slider gives you. */
+export interface RangeSliderHandle<V extends SliderValue = SliderValue> {
+  /** The slider's root element. */
+  readonly element: HTMLDivElement | null;
+  /** Moves keyboard focus to a thumb (default: the first). */
+  focus(thumb?: number): void;
+  blur(): void;
+  /** The current value, in the slider's shape (including a change not rendered yet). */
+  getValue(): ValueOf<V>;
+  /** Sets the value of an uncontrolled slider. Does nothing when `value` is controlled. */
+  setValue(value: V | ValueOf<V>): void;
+}
 
 const resolveMarks = (marks: RangeSliderProps["marks"], min: number, max: number): Mark[] => {
   if (!marks) return [];
@@ -116,7 +164,7 @@ const layout = (vertical: boolean) => ({
     : { position: "absolute", top: 0, width: 0, display: "flex", justifyContent: "center" }) as CSSProperties,
 });
 
-type ViewProps = RangeSliderProps<SliderValue> & { defaultShape: Shape };
+type ViewProps = RangeSliderProps<SliderValue> & { defaultShape: Shape; handle: Ref<RangeSliderHandle> };
 
 function SliderView({
   min = 0,
@@ -125,13 +173,22 @@ function SliderView({
   defaultValue,
   onChange,
   onChangeEnd,
+  onDragStart,
+  onDragEnd,
   step = 1,
+  snapToMarks = false,
   minGap,
+  collision,
   largeStep,
   disabled = false,
+  disabledThumbs,
+  readOnly = false,
+  draggableRange = false,
   orientation = "horizontal",
   inverted = false,
   formatValue,
+  format,
+  locale,
   showValues = true,
   name,
   ariaLabel,
@@ -155,36 +212,62 @@ function SliderView({
   valueStyle,
   currencyText = "$",
   defaultShape,
+  handle,
 }: ViewProps) {
   const shape = shapeOf(value ?? defaultValue) ?? defaultShape;
   const report = (cb?: (value: ValueOf<SliderValue>, meta: ChangeMeta) => void) =>
     cb && ((values: number[], meta: ChangeMeta) => cb(fromValues(values, shape), meta));
+  const markList = resolveMarks(marks, min, max);
 
   const s = useRangeSlider({
     min,
     max,
     step,
+    stops: snapToMarks && markList.length ? markList.map((m) => m.value) : undefined,
     minGap,
+    collision,
     largeStep,
     disabled,
+    disabledThumbs,
+    readOnly,
+    draggableRange,
     orientation,
     inverted,
     values: value === undefined ? undefined : toValues(value),
     defaultValues: defaultValue === undefined ? undefined : toValues(defaultValue),
     onChange: report(onChange),
     onChangeEnd: report(onChangeEnd),
+    onDragStart,
+    onDragEnd,
   });
+
+  const rootRef = useRef<HTMLDivElement>(null);
+  useImperativeHandle(handle, () => ({
+    get element() {
+      return rootRef.current;
+    },
+    focus: s.focus,
+    blur: s.blur,
+    getValue: () => fromValues(s.getValues(), shape),
+    setValue: (next: SliderValue) => s.setValues(toValues(next)),
+  }));
 
   const { values } = s;
   const count = values.length;
   const vertical = orientation === "vertical";
   const parts = layout(vertical);
   const span = max - min || 1;
-  const fmt = (n: number) => (formatValue ? formatValue(n) : `${currencyText}${n}`);
+  const formatKey = JSON.stringify([locale, format]);
+  const numberFormat = useMemo(
+    () => (format || locale ? new Intl.NumberFormat(locale, format) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `format` is usually an inline object
+    [formatKey]
+  );
+  const fmt = (n: number) =>
+    formatValue ? formatValue(n) : numberFormat ? numberFormat.format(n) : `${currencyText}${n}`;
   /** Built-in class (left out when unstyled) plus the user's class for that part. */
   const cx = (slot: SliderSlot, base: string) => [unstyled ? "" : base, classNames[slot]].filter(Boolean).join(" ") || undefined;
   const tipMode = tooltip === true ? "hover" : tooltip || undefined;
-  const markList = resolveMarks(marks, min, max);
   const inRange = (v: number) => (count > 1 ? v >= values[0] && v <= values[count - 1] : v <= values[0]);
 
   const stateOf = (i: number): ThumbState => ({
@@ -193,13 +276,13 @@ function SliderView({
     formatted: fmt(values[i]),
     active: i === s.active,
     hover: i === s.hover,
-    dragging: i === s.dragging,
+    dragging: i === s.dragging || s.dragging === "range",
     focusVisible: i === s.focusVisible,
-    disabled,
+    disabled: s.locked[i],
   });
   const tipContent = (i: number) => (renderTooltip ? renderTooltip(stateOf(i)) : fmt(values[i]));
   const tipVisible = (i: number) =>
-    tipMode === "always" || i === s.hover || i === s.dragging || i === s.focusVisible;
+    tipMode === "always" || i === s.hover || i === s.dragging || s.dragging === "range" || i === s.focusVisible;
 
   const tips = useTooltipLayout({
     enabled: !!tipMode,
@@ -208,6 +291,7 @@ function SliderView({
     count,
     control: s.controlRef,
   });
+  const markFit = useMarkLayout({ enabled: markList.length > 0, vertical, count: markList.length, control: s.controlRef });
   const mergedInto = new Set(tips.layout.merged.flat());
   /** One label for a merged group: "$480 – $520", or a single value when the thumbs coincide. */
   const mergedContent = (group: number[]) => {
@@ -241,6 +325,7 @@ function SliderView({
 
   return (
     <div
+      ref={rootRef}
       className={[cx("root", "rs-root"), className].filter(Boolean).join(" ") || undefined}
       style={rootStyle}
       role={count > 1 ? "group" : undefined}
@@ -249,11 +334,12 @@ function SliderView({
       data-theme={theme}
       data-orientation={orientation}
       data-disabled={disabled || undefined}
+      data-readonly={readOnly || undefined}
       data-tooltip={tipMode}
     >
       <div {...controlProps} className={cx("control", "rs-control")} style={{ ...controlProps.style, ...styles.control }}>
         <div className={cx("track", "rs-track")} style={{ ...trackProps.style, ...styles.track }}>
-          <div className={cx("range", "rs-range")} style={{ ...rangeProps.style, ...styles.range }} />
+          <div {...rangeProps} className={cx("range", "rs-range")} style={{ ...rangeProps.style, ...styles.range }} />
         </div>
         {values.map((v, i) => {
           const thumbProps = s.getThumbProps(i);
@@ -328,15 +414,24 @@ function SliderView({
       </div>
       {markList.length > 0 && (
         <div className={cx("marks", "rs-marks")} style={{ position: "relative", ...styles.marks }} aria-hidden="true">
-          {markList.map((m) => (
+          {markList.map((m, mi) => (
             <span
               key={m.value}
+              ref={(el) => {
+                markFit.anchors.current[mi] = el;
+              }}
               className={cx("mark", "rs-mark")}
               style={{ ...parts.mark, ...s.alongStyle((m.value - min) / span), ...styles.mark }}
               data-active={inRange(m.value) ? "" : undefined}
             >
               {(m.label ?? (Array.isArray(marks) ? undefined : fmt(m.value))) !== undefined && (
-                <span className={cx("markLabel", "rs-mark-label")} style={{ ...NO_WRAP, ...styles.markLabel }}>
+                <span
+                  ref={(el) => {
+                    markFit.labels.current[mi] = el;
+                  }}
+                  className={cx("markLabel", "rs-mark-label")}
+                  style={{ position: "relative", ...NO_WRAP, ...markFit.shiftStyle(markFit.shifts[mi]), ...styles.markLabel }}
+                >
                   {m.label ?? fmt(m.value)}
                 </span>
               )}
@@ -364,17 +459,22 @@ function SliderView({
   );
 }
 
+/** The slider component type: generic in the value shape, with a typed `ref`. */
+type SliderComponent<Default extends SliderValue> = <V extends SliderValue = Default>(
+  props: RangeSliderProps<V> & { ref?: Ref<RangeSliderHandle<V>> }
+) => ReactElement | null;
+
 /**
  * A slider with one, two or more thumbs. `onChange` reports the shape you pass as
  * `value` / `defaultValue`: a number, an array, or `{ min, max }` (an array when neither is set).
  */
-export function RangeSlider<V extends SliderValue = number[]>(props: RangeSliderProps<V>): ReactElement {
-  return <SliderView {...(props as unknown as RangeSliderProps<SliderValue>)} defaultShape="array" />;
-}
+export const RangeSlider = forwardRef<RangeSliderHandle, RangeSliderProps<SliderValue>>(function RangeSlider(props, ref) {
+  return <SliderView {...props} defaultShape="array" handle={ref} />;
+}) as unknown as SliderComponent<number[]>;
 
 /** The 2.x component name: the same slider, with values defaulting to `{ min, max }`. */
-export function MultiRangeSlider<V extends SliderValue = RangeValues>(props: RangeSliderProps<V>): ReactElement {
-  return <SliderView {...(props as unknown as RangeSliderProps<SliderValue>)} defaultShape="object" />;
-}
+export const MultiRangeSlider = forwardRef<RangeSliderHandle, RangeSliderProps<SliderValue>>(function MultiRangeSlider(props, ref) {
+  return <SliderView {...props} defaultShape="object" handle={ref} />;
+}) as unknown as SliderComponent<RangeValues>;
 
 export default MultiRangeSlider;

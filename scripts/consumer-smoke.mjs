@@ -12,11 +12,16 @@ const work = mkdtempSync(join(tmpdir(), "rs-consumer-"));
 const run = (cmd, cwd) =>
   execSync(cmd, { cwd, stdio: "inherit", env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" } });
 
-const esmCheck = `import S, { MultiRangeSlider } from "react-multi-input-rangeslider";
-if (typeof S !== "function" || S !== MultiRangeSlider) throw new Error("ESM exports are wrong");
+// A component is a function, or an object with $$typeof (forwardRef / memo).
+const isComponent = `(c) => typeof c === "function" || (typeof c === "object" && c !== null && "$$typeof" in c)`;
+const esmCheck = `import S, { MultiRangeSlider, RangeSlider, useRangeSlider } from "react-multi-input-rangeslider";
+const isComponent = ${isComponent};
+if (!isComponent(S) || S !== MultiRangeSlider || !isComponent(RangeSlider) || typeof useRangeSlider !== "function")
+  throw new Error("ESM exports are wrong");
 console.log("ESM import OK");`;
 const cjsCheck = `const m = require("react-multi-input-rangeslider");
-if (typeof m.default !== "function" || m.default !== m.MultiRangeSlider) throw new Error("CJS exports are wrong");
+const isComponent = ${isComponent};
+if (!isComponent(m.default) || m.default !== m.MultiRangeSlider || !isComponent(m.RangeSlider)) throw new Error("CJS exports are wrong");
 require.resolve("react-multi-input-rangeslider/style.css");
 require.resolve("react-multi-input-rangeslider/style.layer.css");
 console.log("CJS require + CSS exports OK");`;

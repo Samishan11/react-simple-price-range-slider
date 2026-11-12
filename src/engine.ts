@@ -3,7 +3,7 @@
  * press grabs. Pure functions only (no React, no DOM), so they are easy to test and reuse.
  * Thumb values are passed as an ascending array (index 0 = lowest).
  */
-import type { RangeValues, SliderValue, Step } from "./types";
+import type { Collision, RangeValues, SliderValue, Step } from "./types";
 
 export const clamp = (n: number, lo: number, hi: number) => Math.min(Math.max(n, lo), hi);
 
@@ -25,7 +25,7 @@ export const roundLike = (n: number, ...refs: number[]) =>
 
 export type Shape = "number" | "array" | "object";
 
-const isList = (v: SliderValue): v is readonly number[] => Array.isArray(v);
+const isList = (v: unknown): v is readonly number[] => Array.isArray(v);
 
 export const shapeOf = (v: SliderValue | undefined): Shape | undefined =>
   v === undefined ? undefined : typeof v === "number" ? "number" : isList(v) ? "array" : "object";
@@ -48,14 +48,28 @@ export const normalize = (values: readonly number[], min: number, max: number) =
 
 // ---- stops -------------------------------------------------------------------------------
 
-const stepSize = (step: Step) => (typeof step === "number" && step > 0 ? step : 0);
+/**
+ * Where thumbs may stop: a step grid (`number`), anywhere (`"any"`), or only at the values of an
+ * explicit list, e.g. the marks (`snapToMarks`).
+ */
+export type StopRule = Step | readonly number[];
+
+const stepSize = (step: StopRule) => (typeof step === "number" && step > 0 ? step : 0);
+/** The listed stops inside [min, max], ascending and without duplicates. */
+const listed = (step: StopRule, min: number, max: number) =>
+  isList(step) ? Array.from(new Set(step.filter((v) => v >= min && v <= max))).sort((a, b) => a - b) : null;
 
 /**
  * The nearest allowed value ("stop"): the grid `min + k * step` inside [min, max], plus `max`
- * itself, so `max` stays reachable even when `max - min` isn't a multiple of `step`.
+ * itself, so `max` stays reachable even when `max - min` isn't a multiple of `step`; or the
+ * nearest listed stop.
  */
-export function snapToStop(raw: number, min: number, max: number, step: Step) {
+export function snapToStop(raw: number, min: number, max: number, step: StopRule) {
   const value = clamp(raw, min, max);
+  const list = listed(step, min, max);
+  if (list) {
+    return list.length ? list.reduce((best, v) => (Math.abs(v - value) < Math.abs(best - value) ? v : best)) : value;
+  }
   const s = stepSize(step);
   if (!s || max <= min) return value;
   const k = Math.floor((value - min) / s + 1e-9);
@@ -69,8 +83,15 @@ export function snapToStop(raw: number, min: number, max: number, step: Step) {
  * first step lands on the next stop in that direction. Without a step (`"any"`), one step is
  * 1% of the range.
  */
-export function stepFrom(value: number, count: number, min: number, max: number, step: Step) {
+export function stepFrom(value: number, count: number, min: number, max: number, step: StopRule) {
   if (count === 0) return value;
+  const list = listed(step, min, max);
+  if (list) {
+    if (!list.length) return clamp(value, min, max);
+    // From a stop, move `count` stops; from between stops, the first step lands on the neighbour.
+    const base = count > 0 ? list.filter((v) => v <= value).length - 1 : list.length - list.filter((v) => v >= value).length;
+    return list[clamp(base + count, 0, list.length - 1)];
+  }
   const s = stepSize(step) || (max - min) / 100;
   if (!(s > 0)) return clamp(value, min, max);
   const position = (value - min) / s;
@@ -83,15 +104,20 @@ export function stepFrom(value: number, count: number, min: number, max: number,
  * stop away from `current` in the direction it moved, so a screen reader's small "increment"
  * never snaps back to where it started.
  */
-export function settle(raw: number, current: number, min: number, max: number, step: Step) {
+export function settle(raw: number, current: number, min: number, max: number, step: StopRule) {
   if (Number.isNaN(raw)) return current;
   const snapped = snapToStop(raw, min, max, step);
   if (snapped !== current || raw === current) return snapped;
   return stepFrom(current, raw > current ? 1 : -1, min, max, step);
 }
 
-/** Stops in a large step (PageUp/PageDown, Shift+Arrow): `largeStep` if given, else ~10% of the range. */
-export function largeStepCount(min: number, max: number, step: Step, largeStep?: number) {
+/**
+ * Stops in a large step (PageUp/PageDown, Shift+Arrow): `largeStep` if given, else ~10% of the
+ * range (or of the listed stops).
+ */
+export function largeStepCount(min: number, max: number, step: StopRule, largeStep?: number) {
+  const list = listed(step, min, max);
+  if (list) return Math.max(1, Math.round(list.length / 10));
   const s = stepSize(step) || (max - min) / 100;
   if (!(s > 0)) return 1;
   const size = largeStep && largeStep > 0 ? largeStep : (max - min) / 10;
@@ -119,6 +145,78 @@ export function moveThumb(values: readonly number[], index: number, target: numb
   return next;
 }
 
+/**
+ * Moves thumb `index` toward `target`, pushing the neighbours it runs into (keeping `gap`), as
+ * far as the ends of the slider and any `locked` (disabled) thumbs allow.
+ */
+export function pushThumb(
+  values: readonly number[],
+  index: number,
+  target: number,
+  b: Bounds,
+  locked: readonly boolean[] = []
+): number[] {
+  const n = values.length;
+  const refs = [b.step, b.min, b.max, b.gap, ...values];
+  // How far the thumb can go before the chain it pushes reaches an end or a locked thumb.
+  let hi = b.max - (n - 1 - index) * b.gap;
+  for (let j = index + 1; j < n; j++) if (locked[j]) { hi = values[j] - (j - index) * b.gap; break; }
+  let lo = b.min + index * b.gap;
+  for (let j = index - 1; j >= 0; j--) if (locked[j]) { lo = values[j] + (index - j) * b.gap; break; }
+  const next = values.slice();
+  next[index] = roundLike(clamp(target, lo, hi), ...refs);
+  for (let j = index + 1; j < n; j++) next[j] = Math.max(next[j], roundLike(next[j - 1] + b.gap, ...refs));
+  for (let j = index - 1; j >= 0; j--) next[j] = Math.min(next[j], roundLike(next[j + 1] - b.gap, ...refs));
+  return next;
+}
+
+/**
+ * Moves thumb `index` to `target`, letting it pass its neighbours (the values re-sort, so the
+ * thumb may get a new index, which is returned). Locked thumbs still can't be passed. `minGap`
+ * doesn't apply: passing means meeting.
+ */
+export function swapThumb(
+  values: readonly number[],
+  index: number,
+  target: number,
+  b: Bounds,
+  locked: readonly boolean[] = []
+): { values: number[]; index: number } {
+  // The nearest locked thumbs on either side bound the move, value-wise and index-wise.
+  let below = -1;
+  let above = values.length;
+  for (let j = index - 1; j >= 0; j--) if (locked[j]) { below = j; break; }
+  for (let j = index + 1; j < values.length; j++) if (locked[j]) { above = j; break; }
+  const value = clamp(target, below < 0 ? b.min : values[below], above >= values.length ? b.max : values[above]);
+  const rest = values.filter((_, j) => j !== index);
+  // On a tie, stay on the side the thumb came from, so equal thumbs don't flip back and forth.
+  const up = value >= values[index];
+  let at = 0;
+  while (at < rest.length && (up ? rest[at] <= value : rest[at] < value)) at++;
+  at = clamp(at, below + 1, above - 1); // never past a locked thumb, even on a tie
+  return { values: [...rest.slice(0, at), value, ...rest.slice(at)], index: at };
+}
+
+/** Moves one thumb under the given collision rule; returns the values and the thumb's index after the move. */
+export function applyMove(
+  values: readonly number[],
+  index: number,
+  target: number,
+  b: Bounds,
+  collision: Collision = "block",
+  locked: readonly boolean[] = []
+): { values: number[]; index: number } {
+  if (collision === "swap") return swapThumb(values, index, target, b, locked);
+  if (collision === "push") return { values: pushThumb(values, index, target, b, locked), index };
+  return { values: moveThumb(values, index, target, b), index };
+}
+
+/** Moves every thumb by `delta`, as far as the ends allow, keeping their spacing (dragging the range). */
+export function shiftAll(values: readonly number[], delta: number, b: Bounds): number[] {
+  const d = clamp(delta, b.min - values[0], b.max - values[values.length - 1]);
+  return values.map((v) => roundLike(v + d, b.step, b.min, b.max, ...values));
+}
+
 // ---- geometry ------------------------------------------------------------------------------
 
 /** Where the slider's interactive area sits on screen along its main axis, in client pixels. */
@@ -133,11 +231,15 @@ export interface Layout {
   reversed: boolean;
 }
 
-/** Position along the track for a pointer at `pos`: 0 at the min end, 1 at the max end. */
-export function fractionAt(pos: number, l: Layout) {
+/**
+ * Position along the track for a pointer at `pos`: 0 at the min end, 1 at the max end. With
+ * `unclamped`, positions past the ends go below 0 / above 1 (for measuring drag distances).
+ */
+export function fractionAt(pos: number, l: Layout, unclamped = false) {
   const travel = l.length - l.size;
   if (travel <= 0) return 0;
-  const f = clamp((pos - l.start - l.size / 2) / travel, 0, 1);
+  const raw = (pos - l.start - l.size / 2) / travel;
+  const f = unclamped ? raw : clamp(raw, 0, 1);
   return l.reversed ? 1 - f : f;
 }
 
@@ -153,25 +255,46 @@ export type Press =
   /** Several thumbs overlap under the pointer: the first movement decides (see `pickFromStack`). */
   | { kind: "stack"; indices: number[] }
   /** Bare track: the nearest thumb jumps to the pointer. */
-  | { kind: "track"; index: number };
+  | { kind: "track"; index: number }
+  /** The filled range between the outer thumbs, when it can be dragged: all thumbs move together. */
+  | { kind: "range" }
+  /** Nothing to move (every thumb is locked). */
+  | { kind: "none" };
+
+export interface PressOptions {
+  /** Values grow toward the start of the axis (RTL, vertical, inverted). */
+  reversed: boolean;
+  /** Thumbs that can't move (disabled); presses ignore them. */
+  locked?: readonly boolean[];
+  /** A press on the filled range drags the whole range. */
+  range?: boolean;
+}
 
 /**
  * What a press at `pos` grabs, given each thumb's centre (in value order) and the thumb
  * radius. On the bare track the nearest thumb wins; when several thumbs sit at the same spot,
  * the one on the side of the press wins (so it can actually move there).
  */
-export function pressAt(pos: number, centers: readonly number[], radius: number, reversed: boolean): Press {
-  const under = centers.flatMap((c, i) => (Math.abs(pos - c) <= radius ? [i] : []));
+export function pressAt(pos: number, centers: readonly number[], radius: number, o: PressOptions): Press {
+  const free = (i: number) => !o.locked?.[i];
+  const hit = centers.flatMap((c, i) => (Math.abs(pos - c) <= radius ? [i] : []));
+  const under = hit.filter(free);
   if (under.length === 1) return { kind: "thumb", index: under[0] };
   if (under.length > 1) return { kind: "stack", indices: under };
-  let best = 0;
-  for (let i = 1; i < centers.length; i++) {
+  if (hit.length) return { kind: "none" }; // pressing a locked thumb does nothing
+  if (o.range && centers.length > 1) {
+    const ends = [centers[0], centers[centers.length - 1]];
+    if (pos > Math.min(...ends) && pos < Math.max(...ends)) return { kind: "range" };
+  }
+  let best = -1;
+  for (let i = 0; i < centers.length; i++) {
+    if (!free(i)) continue;
     const d = Math.abs(pos - centers[i]);
-    const bestD = Math.abs(pos - centers[best]);
-    const pressIsHigher = reversed ? pos < centers[i] : pos > centers[i];
+    const bestD = best < 0 ? Infinity : Math.abs(pos - centers[best]);
+    const pressIsHigher = o.reversed ? pos < centers[i] : pos > centers[i];
     if (d < bestD || (d === bestD && pressIsHigher)) best = i;
   }
-  return { kind: "track", index: best };
+  return best < 0 ? { kind: "none" } : { kind: "track", index: best };
 }
 
 /**

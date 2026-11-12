@@ -3,7 +3,7 @@ import MultiRangeSlider, { RangeSlider } from "./RangeSlider";
 export default MultiRangeSlider;
 export { MultiRangeSlider, RangeSlider };
 export { useRangeSlider } from "./useRangeSlider";
-export type { RangeSliderProps, MultiRangeSliderProps } from "./RangeSlider";
+export type { RangeSliderProps, MultiRangeSliderProps, RangeSliderHandle } from "./RangeSlider";
 export type { UseRangeSliderOptions, RangeSliderState } from "./useRangeSlider";
 export type {
   RangeValues,
@@ -13,5 +13,8 @@ export type {
   SliderSlot,
   Orientation,
   Step,
+  Collision,
   ChangeMeta,
+  DragMeta,
+  ThumbState,
 } from "./types";

@@ -131,7 +131,7 @@ test.describe("pointer", () => {
     for (let x = at(0.2); x <= box.x + box.width + 30; x += 4) await page.mouse.move(x, y);
     await page.mouse.up();
 
-    const log = await events(page);
+    const log = (await events(page)).filter((e) => e.type === "change" || e.type === "end");
     expect(log.length).toBeGreaterThan(0);
     for (const { value } of log) {
       const { min, max } = value as RangeValues;

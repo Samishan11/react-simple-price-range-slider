@@ -87,6 +87,30 @@ function App() {
           )}
         />
       </Section>
+      <Section title="v3 · drag the range (grab the fill)">
+        <RangeSlider defaultValue={[30, 60]} draggableRange tooltip width="100%" />
+      </Section>
+      <Section title="v3 · when thumbs meet: push · swap">
+        <RangeSlider defaultValue={[20, 50, 80]} collision="push" tooltip width="100%" />
+        <div style={{ height: 12 }} />
+        <RangeSlider defaultValue={[20, 50]} collision="swap" tooltip width="100%" />
+      </Section>
+      <Section title="v3 · a locked thumb · read-only">
+        <RangeSlider defaultValue={[20, 80]} disabledThumbs={[true, false]} width="100%" />
+        <div style={{ height: 12 }} />
+        <RangeSlider defaultValue={[35, 65]} readOnly width="100%" />
+      </Section>
+      <Section title="v3 · snap to marks · Intl currency (de-DE)">
+        <RangeSlider
+          max={10000}
+          defaultValue={[2500, 7500]}
+          marks={4}
+          snapToMarks
+          format={{ style: "currency", currency: "EUR", maximumFractionDigits: 0 }}
+          locale="de-DE"
+          width="100%"
+        />
+      </Section>
       <Section title="v3 · single thumb (number in, number out)">
         <RangeSlider defaultValue={40} tooltip ariaLabel="Volume" formatValue={(n) => `${n}%`} width="100%" />
       </Section>

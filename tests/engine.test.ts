@@ -1,4 +1,5 @@
 import {
+  applyMove,
   centerAt,
   containShift,
   decimalsOf,
@@ -11,14 +12,108 @@ import {
   normalize,
   pickFromStack,
   pressAt,
+  pushThumb,
   roundLike,
   settle,
   shapeOf,
+  shiftAll,
   snapToStop,
   stepFrom,
+  swapThumb,
   toValues,
   type Layout,
 } from "../src/engine";
+
+describe("listed stops (snapToMarks)", () => {
+  const marks = [0, 10, 25, 50, 100];
+
+  it("snaps to the nearest listed value only", () => {
+    expect(snapToStop(18, 0, 100, marks)).toBe(25);
+    expect(snapToStop(17, 0, 100, marks)).toBe(10);
+    expect(snapToStop(80, 0, 100, marks)).toBe(100);
+  });
+
+  it("steps along the list, landing on the neighbour from between stops", () => {
+    expect(stepFrom(25, 1, 0, 100, marks)).toBe(50);
+    expect(stepFrom(25, -1, 0, 100, marks)).toBe(10);
+    expect(stepFrom(30, 1, 0, 100, marks)).toBe(50);
+    expect(stepFrom(30, -1, 0, 100, marks)).toBe(25);
+    expect(stepFrom(50, 9, 0, 100, marks)).toBe(100);
+    expect(stepFrom(10, -9, 0, 100, marks)).toBe(0);
+  });
+
+  it("assistive-technology nudges move one listed stop", () => {
+    expect(settle(26, 25, 0, 100, marks)).toBe(50);
+    expect(settle(24, 25, 0, 100, marks)).toBe(10);
+  });
+
+  it("ignores listed values outside the range, and duplicates", () => {
+    expect(stepFrom(10, 1, 0, 50, [10, 10, 40, 200])).toBe(40);
+    expect(stepFrom(40, 1, 0, 50, [10, 10, 40, 200])).toBe(40);
+  });
+
+  it("a large step is ~10% of the list", () => {
+    expect(largeStepCount(0, 100, marks)).toBe(1);
+    expect(largeStepCount(0, 100, Array.from({ length: 41 }, (_, i) => i * 2.5))).toBe(4);
+  });
+});
+
+describe("collisions", () => {
+  const b = { min: 0, max: 100, step: 1, gap: 0 };
+
+  it("push moves the neighbours it runs into, keeping the gap", () => {
+    expect(pushThumb([20, 50, 80], 0, 60, b)).toEqual([60, 60, 80]);
+    expect(pushThumb([20, 50, 80], 0, 90, { ...b, gap: 5 })).toEqual([90, 95, 100]);
+    expect(pushThumb([20, 50, 80], 2, 10, b)).toEqual([10, 10, 10]);
+  });
+
+  it("push stops when the chain reaches an end", () => {
+    expect(pushThumb([20, 50, 80], 0, 100, { ...b, gap: 10 })).toEqual([80, 90, 100]);
+  });
+
+  it("push can't move a locked thumb", () => {
+    expect(pushThumb([20, 50, 80], 0, 90, b, [false, false, true])).toEqual([80, 80, 80]);
+    expect(pushThumb([20, 50, 80], 0, 90, b, [false, true, false])).toEqual([50, 50, 80]);
+  });
+
+  it("swap passes the neighbours and reports the thumb's new index", () => {
+    expect(swapThumb([20, 50, 80], 0, 60, b)).toEqual({ values: [50, 60, 80], index: 1 });
+    expect(swapThumb([20, 50, 80], 0, 95, b)).toEqual({ values: [50, 80, 95], index: 2 });
+    expect(swapThumb([20, 50, 80], 2, 10, b)).toEqual({ values: [10, 20, 50], index: 0 });
+  });
+
+  it("swap stays on its own side of a tie", () => {
+    expect(swapThumb([20, 50], 0, 50, b)).toEqual({ values: [50, 50], index: 1 });
+    expect(swapThumb([20, 50], 1, 20, b)).toEqual({ values: [20, 20], index: 0 });
+  });
+
+  it("swap can't pass a locked thumb", () => {
+    expect(swapThumb([20, 50, 80], 0, 90, b, [false, true, false])).toEqual({ values: [50, 50, 80], index: 0 });
+  });
+
+  it("applyMove dispatches on the collision rule (block by default)", () => {
+    expect(applyMove([20, 50], 0, 70, b)).toEqual({ values: [50, 50], index: 0 });
+    expect(applyMove([20, 50], 0, 70, b, "push")).toEqual({ values: [70, 70], index: 0 });
+    expect(applyMove([20, 50], 0, 70, b, "swap")).toEqual({ values: [50, 70], index: 1 });
+  });
+});
+
+describe("shiftAll (dragging the range)", () => {
+  const b = { min: 0, max: 100, step: 1, gap: 0 };
+
+  it("moves every thumb, keeping the spacing", () => {
+    expect(shiftAll([20, 50, 70], 10, b)).toEqual([30, 60, 80]);
+  });
+
+  it("stops at either end without squeezing the range", () => {
+    expect(shiftAll([20, 50, 70], 50, b)).toEqual([50, 80, 100]);
+    expect(shiftAll([20, 50, 70], -40, b)).toEqual([0, 30, 50]);
+  });
+
+  it("keeps decimals clean", () => {
+    expect(shiftAll([0.1, 0.2], 0.1, { min: 0, max: 1, step: 0.1, gap: 0 })).toEqual([0.2, 0.3]);
+  });
+});
 
 describe("decimals and rounding", () => {
   it("counts decimals, including exponent forms", () => {
@@ -184,25 +279,49 @@ describe("geometry", () => {
 
 describe("pressAt", () => {
   it("grabs the single thumb under the pointer", () => {
-    expect(pressAt(105, [100, 200], 12, false)).toEqual({ kind: "thumb", index: 0 });
-    expect(pressAt(190, [100, 200], 12, false)).toEqual({ kind: "thumb", index: 1 });
+    expect(pressAt(105, [100, 200], 12, { reversed: false })).toEqual({ kind: "thumb", index: 0 });
+    expect(pressAt(190, [100, 200], 12, { reversed: false })).toEqual({ kind: "thumb", index: 1 });
   });
 
   it("reports a stack when thumbs overlap under the pointer", () => {
-    expect(pressAt(151, [150, 152.76], 12, false)).toEqual({ kind: "stack", indices: [0, 1] });
-    expect(pressAt(150, [150, 150], 12, false)).toEqual({ kind: "stack", indices: [0, 1] });
+    expect(pressAt(151, [150, 152.76], 12, { reversed: false })).toEqual({ kind: "stack", indices: [0, 1] });
+    expect(pressAt(150, [150, 150], 12, { reversed: false })).toEqual({ kind: "stack", indices: [0, 1] });
   });
 
   it("on the bare track, picks the nearest thumb", () => {
-    expect(pressAt(40, [100, 200], 12, false)).toEqual({ kind: "track", index: 0 });
-    expect(pressAt(160, [100, 200], 12, false)).toEqual({ kind: "track", index: 1 });
+    expect(pressAt(40, [100, 200], 12, { reversed: false })).toEqual({ kind: "track", index: 0 });
+    expect(pressAt(160, [100, 200], 12, { reversed: false })).toEqual({ kind: "track", index: 1 });
   });
 
   it("on the bare track next to stacked thumbs, picks the one on the press side", () => {
-    expect(pressAt(40, [150, 150], 12, false)).toEqual({ kind: "track", index: 0 });
-    expect(pressAt(260, [150, 150], 12, false)).toEqual({ kind: "track", index: 1 });
-    expect(pressAt(40, [150, 150], 12, true)).toEqual({ kind: "track", index: 1 });
-    expect(pressAt(260, [150, 150], 12, true)).toEqual({ kind: "track", index: 0 });
+    expect(pressAt(40, [150, 150], 12, { reversed: false })).toEqual({ kind: "track", index: 0 });
+    expect(pressAt(260, [150, 150], 12, { reversed: false })).toEqual({ kind: "track", index: 1 });
+    expect(pressAt(40, [150, 150], 12, { reversed: true })).toEqual({ kind: "track", index: 1 });
+    expect(pressAt(260, [150, 150], 12, { reversed: true })).toEqual({ kind: "track", index: 0 });
+  });
+
+  it("with a draggable range, a press between the outer thumbs grabs the range", () => {
+    const o = { reversed: false, range: true };
+    expect(pressAt(150, [100, 200], 12, o)).toEqual({ kind: "range" });
+    expect(pressAt(105, [100, 200], 12, o)).toEqual({ kind: "thumb", index: 0 });
+    expect(pressAt(40, [100, 200], 12, o)).toEqual({ kind: "track", index: 0 });
+    expect(pressAt(150, [200, 100], 12, { ...o, reversed: true })).toEqual({ kind: "range" });
+  });
+
+  it("locked thumbs: pressing one does nothing; free thumbs get the presses around them", () => {
+    const o = { reversed: false, locked: [true, false] };
+    expect(pressAt(102, [100, 200], 12, o)).toEqual({ kind: "none" });
+    expect(pressAt(151, [150, 152], 12, o)).toEqual({ kind: "thumb", index: 1 });
+    expect(pressAt(40, [100, 200], 12, o)).toEqual({ kind: "track", index: 1 });
+    expect(pressAt(40, [100, 200], 12, { reversed: false, locked: [true, true] })).toEqual({ kind: "none" });
+  });
+});
+
+describe("fractionAt unclamped", () => {
+  it("measures past the ends for drag distances", () => {
+    const l: Layout = { start: 100, length: 300, size: 24, reversed: false };
+    expect(fractionAt(0, l, true)).toBeCloseTo(-112 / 276, 10);
+    expect(fractionAt(500, l, true)).toBeCloseTo(388 / 276, 10);
   });
 });
 

@@ -14,6 +14,13 @@
   - New slots `tooltipLabel`, `markLabel` and `separator`, so every rendered part takes a class.
   - Tooltips carry `data-visible` for state-based styling.
 - **`renderThumb`** and **`renderTooltip`** for custom thumb and tooltip content.
+- **`draggableRange`**: grab the filled range to move every thumb together (it stops at the ends without squeezing).
+- **`collision`**: `"push"` moves the neighbours along; `"swap"` lets thumbs pass each other, with keyboard focus following the thumb. `"block"` stays the default.
+- **`disabledThumbs`** locks thumbs by index (pressing one does nothing; neighbours stop at it). **`readOnly`** shows the value, stays focusable for screen readers (`aria-readonly`) and ignores input.
+- **`snapToMarks`**: thumbs stop only at mark values, from the pointer, the keyboard and assistive technology.
+- **`format` / `locale`**: formatting through `Intl.NumberFormat`, e.g. `format={{ style: "currency", currency: "EUR" }} locale="de-DE"`.
+- **`onDragStart` / `onDragEnd`** callbacks (`{ thumb }`, `-1` for the range).
+- **A `ref` handle** (`RangeSliderHandle`): `element`, `focus(thumb)`, `blur()`, `getValue()`, `setValue()` in the slider's value shape.
 - `min` / `max` are optional (0 / 100).
 
 ### Changed
@@ -24,11 +31,13 @@
 - Layout styles of tooltips and marks moved inline. Tooltip visibility is `.rs-tooltip[data-visible]` instead of `.rs-thumb[data-hover] + .rs-tooltip` and similar sibling selectors.
 - The last-used thumb is marked `data-active` (drawn on top) instead of an inline `z-index`.
 - A single-thumb slider is no longer wrapped in `role="group"`; `ariaLabel` names the slider itself.
+- `RangeSlider` and `MultiRangeSlider` are `forwardRef` components (objects, not plain functions), so they accept a `ref`.
 
 ### Fixed
 - **An off-grid `max` is reachable**, and every thumb sits exactly where its value says: e.g. `max={100} step={30}` used to snap the thumb to 90 while the fill and label said 100.
 - **Always-on tooltips no longer cover each other.** When thumbs come close, their tooltips merge into one label (`$480 – $520`, or a single value when the thumbs coincide) and split again as the thumbs move apart.
 - **Tooltips stay inside the slider at the ends.** A label that would overflow is nudged inward while its arrow keeps pointing at the thumb; labels re-fit when the slider is resized. Works in RTL and on vertical sliders.
+- **Mark labels stay inside the slider too** (e.g. a "$1,000" label at the right end).
 - **`onChangeEnd` fires for assistive technology**: a screen reader's increment (e.g. a VoiceOver swipe) never ended an adjustment before.
 - Assistive-technology increments always move at least one step, even when the browser's own increment is smaller than `step`.
 - The focus ring follows the input method: shown for keyboard focus, hidden after a pointer press, back as soon as a key is pressed.
