@@ -24,11 +24,10 @@ A small, accessible, themeable **range slider** for React with one, two or more 
 ## Install
 
 ```sh
-npm install react-multi-input-rangeslider@next   # 3.0 release candidate (this README)
-npm install react-multi-input-rangeslider        # 2.x, the current stable release
+npm install react-multi-input-rangeslider
 ```
 
-This README documents 3.0. For 2.x, see [its README](https://github.com/Samishan11/react-simple-price-range-slider/blob/340fce7/README.md). 3.0 accepts every 2.x prop ([migration notes](#migrating-from-2x-to-30)).
+Upgrading from 2.x: every 2.x prop still works ([migration notes](#migrating-from-2x-to-30)). The 2.x docs are in [the 2.1.0 README](https://github.com/Samishan11/react-simple-price-range-slider/blob/v2.1.0/README.md).
 
 ## Usage
 

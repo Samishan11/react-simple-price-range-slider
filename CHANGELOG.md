@@ -1,13 +1,8 @@
 # Changelog
 
-## Unreleased
+## 3.0.0
 
-### Internal
-- Releases publish from GitHub Actions with npm trusted publishing: publishing a GitHub release runs the publish checks and publishes, with no npm token stored anywhere and a provenance attestation on npm. Pre-releases go to `next`, releases to `latest`.
-
-## 3.0.0-rc.0
-
-Release candidate for 3.0, on the `next` tag: `npm install react-multi-input-rangeslider@next`. Every 2.x prop still works; see [Migrating from 2.x to 3.0](README.md#migrating-from-2x-to-30) if you wrote CSS against the markup.
+Every 2.x prop still works, and `MultiRangeSlider` still reports `{ min, max }`. If you wrote CSS against the markup, see [Migrating from 2.x to 3.0](README.md#migrating-from-2x-to-30). The code is the same as 3.0.0-rc.0.
 
 ### Added
 - **Any number of thumbs.** `value` / `defaultValue` take a number (one thumb), an array (one thumb per entry) or `{ min, max }`, and `onChange` / `onChangeEnd` report the same shape. New named export `RangeSlider`; `MultiRangeSlider` stays the default export.
@@ -58,6 +53,7 @@ Release candidate for 3.0, on the `next` tag: `npm install react-multi-input-ran
 
 ### Internal
 - CI runs once per pull request (pushes only on `main`), cancels superseded runs, and runs the unit tests and package checks on Node 22 and 24 (Node 20 is end-of-life). GitHub Actions moved to their Node 24 releases.
+- Releases publish from GitHub Actions with npm trusted publishing: publishing a GitHub release runs the publish checks and publishes, with no npm token stored anywhere and a provenance attestation on npm. Pre-releases go to `next`, releases to `latest`.
 
 ## 2.1.0
 
