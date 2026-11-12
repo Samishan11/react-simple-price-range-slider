@@ -57,6 +57,16 @@ export interface ThumbState {
 
 export type Orientation = "horizontal" | "vertical";
 
+/**
+ * A ready-made look (needs the stylesheet): `"default"`; `"minimal"` (hairline track, small dots);
+ * `"soft"` (large white knobs with a soft shadow); `"material"` (Material 3: thick track, bar
+ * handles with gaps cut into the track).
+ */
+export type SliderVariant = "default" | "minimal" | "soft" | "material";
+
+/** Scales any variant: `"sm"` (5/6), `"md"` (default), `"lg"` (4/3). */
+export type SliderSize = "sm" | "md" | "lg";
+
 /** `"any"` (or a non-positive number) means no stepping: every value is allowed. */
 export type Step = number | "any";
 

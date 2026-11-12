@@ -58,6 +58,12 @@ export interface UseRangeSliderOptions {
 /** How far (px) the pointer must move before a press on overlapping thumbs picks one. */
 const PICK_DISTANCE = 3;
 
+/**
+ * Smallest grab radius (px): presses within it grab the thumb rather than jumping the track, so
+ * small thumbs stay as easy to catch as a 24px one (WCAG 2.5.8 target size).
+ */
+const MIN_GRAB_RADIUS = 12;
+
 /** `Drag.thumb` value while the whole range is being dragged. */
 const RANGE = -1;
 
@@ -263,7 +269,7 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
     const pos = posOf(e);
     // Where thumbs overlap, the one drawn on top (the last used) wins; locked thumbs don't react.
     const order = [active, ...values.map((_, i) => i).filter((i) => i !== active)].filter((i) => !locked[i]);
-    let next: number | "range" | null = order.find((i) => Math.abs(pos - c[i]) <= l.size / 2) ?? null;
+    let next: number | "range" | null = order.find((i) => Math.abs(pos - c[i]) <= Math.max(l.size / 2, MIN_GRAB_RADIUS)) ?? null;
     if (next === null && rangeDraggable && pos > Math.min(c[0], c[count - 1]) && pos < Math.max(c[0], c[count - 1]))
       next = "range";
     if (next !== hover) setHover(next);
@@ -276,7 +282,7 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
     if (l.length <= l.size) return; // not laid out (hidden, or a test DOM)
     const c = centersFor(l);
     const pos = posOf(e);
-    const press = pressAt(pos, c, l.size / 2, { reversed: l.reversed, locked, range: rangeDraggable });
+    const press = pressAt(pos, c, Math.max(l.size / 2, MIN_GRAB_RADIUS), { reversed: l.reversed, locked, range: rangeDraggable });
     if (press.kind === "none") return;
     if (drag.current) {
       release(drag.current); // a previous drag whose release we never saw
@@ -426,6 +432,8 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
         position: "relative",
         touchAction: vertical ? "pan-x" : "pan-y",
         [vertical ? "minWidth" : "minHeight"]: size,
+        // Each thumb's track fraction (--rs-p0, --rs-p1, …) for CSS effects, e.g. track gaps around handles.
+        ...Object.fromEntries(fractions.map((f, i) => [`--rs-p${i}`, f])),
       } as CSSProperties,
       "data-hover": attr(hover !== null),
       "data-dragging": attr(dragging !== null),

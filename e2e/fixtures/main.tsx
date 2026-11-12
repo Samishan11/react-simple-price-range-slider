@@ -1,11 +1,12 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { RangeSlider, type RangeSliderProps, type SliderValue } from "../../src";
+import { RangeSlider, type RangeSliderProps, type SliderSize, type SliderValue, type SliderVariant } from "../../src";
 import "../../src/styles.css";
 
 /**
  * One page, many scenarios: `/?case=<name>` renders a single slider (300px wide, or 200px tall
- * when vertical). Optional overrides: `&value=20,80` (start values) and `&thumb=32` (thumb size).
+ * when vertical). Optional overrides: `&value=20,80` (start values), `&thumb=32` (thumb size),
+ * `&variant=material` and `&size=lg`.
  * Every onChange / onChangeEnd payload (and drag start/end thumb) is recorded on `window.__events`.
  */
 export type SliderEvent = { type: "change" | "end" | "dragstart" | "dragend"; value: SliderValue };
@@ -38,6 +39,7 @@ const cases: Record<string, Case> = {
   "tooltips-three": { min: 0, max: 100, defaultValue: [20, 22, 80], tooltip: "always" },
   "tooltips-vertical": { min: 0, max: 1000, step: 10, orientation: "vertical", tooltip: "always", formatValue: usd },
   rtl: { min: 0, max: 100, defaultValue: { min: 20, max: 80 }, dir: "rtl" },
+  "rtl-single": { min: 0, max: 100, defaultValue: 30, dir: "rtl", ariaLabel: "Volume" },
   disabled: { min: 0, max: 100, defaultValue: { min: 20, max: 80 }, disabled: true },
   single: { min: 0, max: 100, defaultValue: 30, ariaLabel: "Volume" },
   three: { min: 0, max: 100, defaultValue: [20, 50, 80] },
@@ -66,6 +68,8 @@ if (props && value) {
     typeof given === "number" ? numbers[0] : Array.isArray(given) ? numbers : { min: numbers[0], max: numbers[1] };
 }
 const thumb = params.get("thumb");
+if (props && params.get("variant")) props.variant = params.get("variant") as SliderVariant;
+if (props && params.get("size")) props.size = params.get("size") as SliderSize;
 
 const slider = props && (
   <RangeSlider

@@ -18,8 +18,10 @@ import type {
   Mark,
   Orientation,
   RangeValues,
+  SliderSize,
   SliderSlot,
   SliderValue,
+  SliderVariant,
   Step,
   ThumbState,
   ValueOf,
@@ -99,6 +101,10 @@ export interface RangeSliderProps<V extends SliderValue = number[]> {
   style?: CSSProperties;
   /** `"auto"` follows the OS colour scheme. Default: light. */
   theme?: "light" | "dark" | "auto";
+  /** A ready-made look: `"default"`, `"minimal"`, `"soft"` or `"material"`. Needs the stylesheet. */
+  variant?: SliderVariant;
+  /** Scales the look: `"sm"`, `"md"` (default) or `"lg"`. */
+  size?: SliderSize;
   /** Text direction. Thumbs, fill, tooltips, marks and arrow keys all follow it. */
   dir?: "ltr" | "rtl";
   /** Value bubble on each thumb: on hover/focus/drag, or always visible. Default `false`. */
@@ -204,6 +210,8 @@ function SliderView({
   className,
   style,
   theme,
+  variant,
+  size,
   dir,
   tooltip = false,
   marks,
@@ -339,7 +347,11 @@ function SliderView({
       aria-label={count > 1 ? ariaLabel : undefined}
       dir={dir}
       data-theme={theme}
+      data-variant={variant}
+      data-size={size}
       data-orientation={orientation}
+      data-inverted={inverted || undefined}
+      data-thumbs={count}
       data-disabled={disabled || undefined}
       data-readonly={readOnly || undefined}
       data-tooltip={tipMode}
@@ -371,12 +383,13 @@ function SliderView({
                   style={{
                     ...parts.tooltip,
                     ...s.alongStyle(s.fractions[i]),
-                    // Merged into a shared label: keep it measurable, but unseen.
+                    // Merged into a shared label: keep it measurable, but unseen. Hidden with
+                    // `visibility` (instant), not opacity, so splitting again doesn't flicker.
                     ...(mergedInto.has(i) ? { visibility: "hidden" } : null),
                     ...styles.tooltip,
                   }}
                   data-show={tipMode === "always" ? "always" : undefined}
-                  data-visible={tipVisible(i) && !mergedInto.has(i) ? "" : undefined}
+                  data-visible={tipVisible(i) ? "" : undefined}
                   data-merged={mergedInto.has(i) ? "" : undefined}
                   aria-hidden="true"
                 >

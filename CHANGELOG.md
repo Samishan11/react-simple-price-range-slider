@@ -22,6 +22,10 @@
 - **`maxGap`**: a maximum distance between neighbouring thumbs (`"block"` stops there, `"push"` pulls the neighbour along).
 - **`onDragStart` / `onDragEnd`** callbacks (`{ thumb }`, `-1` for the range).
 - **A `ref` handle** (`RangeSliderHandle`): `element`, `focus(thumb)`, `blur()`, `getValue()`, `setValue()` in the slider's value shape.
+- **Ready-made styles:** `variant="minimal" | "soft" | "material"` (and `"default"`), each in light and dark (`theme`), RTL, vertical and `inverted`. Material has bar handles with gaps cut into the track and stop dots at the unfilled ends. They are plain CSS (`data-variant`), so every CSS variable still overrides them.
+- **`size="sm" | "md" | "lg"`** scales any variant by 5/6, 1 or 4/3 through a new `--rs-scale` variable.
+- Each thumb's position as a 0–1 track fraction, `--rs-p0`, `--rs-p1`, … on the control, for gradients and other effects that follow the thumbs. The root also has `data-thumbs` (count) and `data-inverted`.
+- `--rs-tooltip-pad-x` / `--rs-tooltip-pad-y` CSS variables.
 - `min` / `max` are optional (0 / 100).
 
 ### Changed
@@ -33,10 +37,12 @@
 - The last-used thumb is marked `data-active` (drawn on top) instead of an inline `z-index`.
 - A single-thumb slider is no longer wrapped in `role="group"`; `ariaLabel` names the slider itself.
 - `RangeSlider` and `MultiRangeSlider` are `forwardRef` components (objects, not plain functions), so they accept a `ref`.
+- **The stylesheet's CSS variables have zero specificity** (declared in `:where()`). A class on the slider, a global `.rs-root { … }` or a scoped `.filters .rs-root { … }` now overrides them whatever order the stylesheets load in, and for every variant, size and theme. (The 2.x README said a wrapper element worked too; it never did, because `.rs-root` declares the variables itself.)
+- **Thumbs smaller than 24px keep a 24px grab area:** a press within 12px of a thumb's centre grabs it instead of jumping the track, and the control is at least 24px thick.
 
 ### Fixed
 - **An off-grid `max` is reachable**, and every thumb sits exactly where its value says: e.g. `max={100} step={30}` used to snap the thumb to 90 while the fill and label said 100.
-- **Always-on tooltips no longer cover each other.** When thumbs come close, their tooltips merge into one label (`$480 – $520`, or a single value when the thumbs coincide) and split again as the thumbs move apart.
+- **Always-on tooltips no longer cover each other.** When thumbs come close, their tooltips merge into one label (`$480 – $520`, or a single value when the thumbs coincide) and split again, without a flicker, as the thumbs move apart.
 - **Tooltips stay inside the slider at the ends.** A label that would overflow is nudged inward while its arrow keeps pointing at the thumb; labels re-fit when the slider is resized. Works in RTL and on vertical sliders.
 - **Mark labels stay inside the slider too** (e.g. a "$1,000" label at the right end).
 - **`onChangeEnd` fires for assistive technology**: a screen reader's increment (e.g. a VoiceOver swipe) never ended an adjustment before.

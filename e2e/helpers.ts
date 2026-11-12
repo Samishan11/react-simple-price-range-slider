@@ -24,8 +24,16 @@ export async function controlBox(page: Page): Promise<Box> {
 export const centerY = (box: Box) => box.y + box.height / 2;
 export const centerX = (box: Box) => box.x + box.width / 2;
 
+/** The thumb's size along the main axis, measured like the slider does (layout size, ignoring hover scaling). */
 export const thumbSize = (page: Page) =>
-  page.locator(".rs-root").evaluate((el) => parseFloat(getComputedStyle(el).getPropertyValue("--rs-thumb-size")));
+  page
+    .locator(".rs-thumb")
+    .first()
+    .evaluate((el) =>
+      (el as HTMLElement).closest("[data-orientation='vertical']")
+        ? (el as HTMLElement).offsetHeight
+        : (el as HTMLElement).offsetWidth
+    );
 
 /**
  * The geometry contract: where the centre of a thumb showing `value` must be.
@@ -78,4 +86,66 @@ export function measureThumbs(page: Page, axis: "x" | "y" = "x") {
       }),
     axis
   );
+}
+
+/** A pixel's colour class: page background (white), black, or red. Tests repaint sliders in these. */
+export type Paint = "w" | "k" | "r";
+
+/** Pixels along a line, classed; `scale` = device pixels per CSS pixel (2 for WebKit's Desktop Safari). */
+export interface PaintLine {
+  paint: Paint[];
+  scale: number;
+}
+
+/**
+ * What a real screenshot shows along one line of CSS pixels (`length` px from `x, y` along
+ * `axis`), each device pixel classed as the nearest of white, black and red. An anti-aliased
+ * pixel is a blend of its two neighbours, and a blend of two of these colours is never nearest
+ * the third.
+ */
+export async function paintAlong(page: Page, x: number, y: number, length: number, axis: "x" | "y"): Promise<PaintLine> {
+  const clip = axis === "x" ? { x, y, width: length, height: 1 } : { x, y, width: 1, height: length };
+  const png = await page.screenshot({ clip, animations: "disabled" });
+  // Decode with the browser's own PNG decoder, on a detached canvas; keep the middle row/column.
+  const { rgb, scale } = await page.evaluate(
+    async ({ src, axis, length }) => {
+      const img = new Image();
+      img.src = src;
+      await img.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0);
+      const line =
+        axis === "x"
+          ? ctx.getImageData(0, Math.floor(img.height / 2), img.width, 1)
+          : ctx.getImageData(Math.floor(img.width / 2), 0, 1, img.height);
+      return { rgb: Array.from(line.data), scale: (axis === "x" ? img.width : img.height) / length };
+    },
+    { src: `data:image/png;base64,${png.toString("base64")}`, axis, length }
+  );
+  const paint: Paint[] = [];
+  for (let i = 0; i < rgb.length; i += 4) {
+    const [r, g, b] = [rgb[i], rgb[i + 1], rgb[i + 2]];
+    const d = { w: (255 - r) ** 2 + (255 - g) ** 2 + (255 - b) ** 2, k: r ** 2 + g ** 2 + b ** 2, r: (255 - r) ** 2 + g ** 2 + b ** 2 };
+    paint.push((Object.keys(d) as Paint[]).reduce((a, c) => (d[c] < d[a] ? c : a)));
+  }
+  return { paint, scale };
+}
+
+/**
+ * Compares painted pixels with what they should be. `expected(p)` gives the paint at page
+ * coordinate `p` along the line; pixels within 1 CSS px of an expected edge may differ
+ * (anti-aliasing), every other pixel must match.
+ */
+export function paintMismatches({ paint, scale }: PaintLine, start: number, expected: (p: number) => Paint): string[] {
+  const out: string[] = [];
+  paint.forEach((got, i) => {
+    const p = start + (i + 0.5) / scale;
+    const want = expected(p);
+    if (got === want || expected(p - 1) !== want || expected(p + 1) !== want) return;
+    out.push(`${p}: ${got}, expected ${want}`);
+  });
+  return out;
 }
