@@ -1,4 +1,5 @@
-import React, { CSSProperties, FC, ReactNode, useState } from "react";
+import React, { CSSProperties, FC, ReactNode, useRef, useState } from "react";
+import { centerAt, clamp, fractionAt, moveThumb, pickFromStack, pressAt, snapToStep, type Layout } from "./engine";
 
 export interface RangeValues {
   min: number;
@@ -37,7 +38,7 @@ export interface MultiRangeSliderProps {
   onChangeEnd?: (values: RangeValues) => void;
   /** Granularity of the slider. Default `1`. */
   step?: number;
-  /** Minimum distance between the two thumbs. Default: `step`. */
+  /** Minimum distance between the two thumbs. Default `0`: the thumbs can meet and overlap. */
   minGap?: number;
   disabled?: boolean;
   /** Format the numbers shown under the slider (and read by screen readers). */
@@ -80,8 +81,6 @@ export interface MultiRangeSliderProps {
   currencyText?: string;
 }
 
-const clamp = (n: number, lo: number, hi: number) => Math.min(Math.max(n, lo), hi);
-
 const resolveMarks = (marks: MultiRangeSliderProps["marks"], min: number, max: number): Mark[] => {
   if (!marks) return [];
   if (Array.isArray(marks)) return marks.filter((m) => m.value >= min && m.value <= max);
@@ -101,6 +100,42 @@ const KEYS = new Set([
   "Home",
   "End",
 ]);
+
+type Thumb = "min" | "max";
+const THUMBS: Thumb[] = ["min", "max"];
+
+/** How far (px) the pointer must move before a press on overlapping thumbs picks one. */
+const PICK_DISTANCE = 3;
+
+/**
+ * Focus for a thumb grabbed with the pointer: keyboard control continues on it, but without a
+ * focus ring, like a native click. (`focusVisible` is in the HTML spec and supported by all
+ * current engines, but not yet in TypeScript's DOM types.)
+ */
+const POINTER_FOCUS = { preventScroll: true, focusVisible: false } as FocusOptions;
+
+interface Drag {
+  pointerId: number;
+  /** The thumb being dragged; null while a press on overlapping thumbs waits for movement. */
+  thumb: Thumb | null;
+  /** Thumbs under the pointer when it went down (used while `thumb` is null). */
+  stack: number[];
+  startX: number;
+  /** Pointer distance from the grabbed thumb's centre, so the thumb never jumps to the pointer. */
+  offset: number;
+  layout: Layout;
+}
+
+/** The control is exactly one thumb tall, so its height is the thumb size. */
+const layoutOf = (control: HTMLElement): Layout => {
+  const rect = control.getBoundingClientRect();
+  return {
+    left: rect.left,
+    width: rect.width,
+    size: rect.height,
+    rtl: getComputedStyle(control).direction === "rtl",
+  };
+};
 
 const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
   min,
@@ -136,9 +171,14 @@ const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
   const [inner, setInner] = useState<RangeValues>(
     defaultValue ?? { min, max }
   );
-  const [active, setActive] = useState<"min" | "max">("max");
+  const [active, setActive] = useState<Thumb>("max");
+  const [hover, setHover] = useState<Thumb | null>(null);
+  const [dragging, setDragging] = useState<Thumb | "pending" | null>(null);
+  const drag = useRef<Drag | null>(null);
+  const minInput = useRef<HTMLInputElement>(null);
+  const maxInput = useRef<HTMLInputElement>(null);
 
-  const gap = Math.max(minGap ?? step, 0);
+  const gap = Math.max(minGap ?? 0, 0);
 
   // Always render a valid, ordered pair that sits inside [min, max],
   // even if props change after mount.
@@ -156,9 +196,17 @@ const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
     onChange?.(next);
   };
 
+  /** Moves one thumb toward `to`, stopping at the other thumb (keeping `minGap`). */
+  const setThumb = (thumb: Thumb, to: number) => {
+    const [a, b] = moveThumb([lo, hi], THUMBS.indexOf(thumb), to, { min, max, step, gap });
+    commit({ min: a, max: b });
+  };
+
   const fmt = (n: number) => (formatValue ? formatValue(n) : `${currencyText}${n}`);
 
-  // The thumb that can still move toward the other one must be on top.
+  // Purely visual: the thumb used last is drawn on top (at the max end, the min thumb,
+  // which is the only one that can still move). Which thumb a press grabs is decided
+  // by the pointer logic below, never by the stacking order.
   const minOnTop = active === "min" || current.min >= max - gap;
 
   const cx = (slot: SliderSlot, base: string) =>
@@ -178,42 +226,116 @@ const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
 
   const finish = () => onChangeEnd?.(current);
 
+  // ---- pointer input -------------------------------------------------------------------
+  // The native inputs ignore the pointer (CSS); the control handles every press so it can
+  // tell overlapping thumbs apart, jump to track clicks and keep the grab offset.
+
+  const centersFor = (layout: Layout) => [lo, hi].map((v) => centerAt((v - min) / span, layout));
+  const valueAt = (x: number, layout: Layout) =>
+    snapToStep(min + fractionAt(x, layout) * (max - min), min, max, step);
+
+  const grab = (thumb: Thumb) => {
+    setActive(thumb);
+    setDragging(thumb);
+    // Script focus would otherwise match :focus-visible and leave the ring and tooltip on.
+    (thumb === "min" ? minInput : maxInput).current?.focus(POINTER_FOCUS);
+  };
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Only the primary pointer drags (a second finger is ignored), and only the main mouse button.
+    if (disabled || !e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
+    const layout = layoutOf(e.currentTarget);
+    if (layout.width <= layout.size) return; // not laid out (hidden, or a test DOM)
+    if (drag.current) finish(); // a previous drag whose release we never saw: close it first
+    e.preventDefault(); // no text selection; focus moves to the grabbed thumb instead
+    setHover(null); // the dragged thumb shows its own state; hover is recomputed on release
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // the pointer is already gone
+    }
+    const centers = centersFor(layout);
+    const press = pressAt(e.clientX, centers, layout.size / 2, layout.rtl);
+    const d: Drag = { pointerId: e.pointerId, thumb: null, stack: [], startX: e.clientX, offset: 0, layout };
+    drag.current = d;
+    if (press.kind === "stack") {
+      d.stack = press.indices;
+      setDragging("pending");
+      return;
+    }
+    d.thumb = THUMBS[press.index];
+    grab(d.thumb);
+    if (press.kind === "thumb") d.offset = e.clientX - centers[press.index];
+    else setThumb(d.thumb, valueAt(e.clientX, layout)); // bare track: jump there
+  };
+
+  const trackHover = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "mouse" || disabled) return;
+    const layout = layoutOf(e.currentTarget);
+    const centers = centersFor(layout);
+    const order = minOnTop ? [0, 1] : [1, 0]; // the thumb drawn on top wins
+    const index = order.find((i) => Math.abs(e.clientX - centers[i]) <= layout.size / 2);
+    const next = index === undefined ? null : THUMBS[index];
+    if (next !== hover) setHover(next);
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d) return trackHover(e);
+    if (e.pointerId !== d.pointerId) return;
+    if (!d.thumb) {
+      const dx = e.clientX - d.startX;
+      if (Math.abs(dx) < PICK_DISTANCE) return;
+      const index = pickFromStack(d.stack, dx > 0 !== d.layout.rtl);
+      d.thumb = THUMBS[index];
+      d.offset = d.startX - centersFor(d.layout)[index];
+      grab(d.thumb);
+    }
+    setThumb(d.thumb, valueAt(e.clientX - d.offset, d.layout));
+  };
+
+  const endDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || e.pointerId !== d.pointerId) return;
+    drag.current = null;
+    setDragging(null);
+    trackHover(e); // the pointer may have been released away from the thumb
+    finish();
+  };
+
+  // ---- rendering ----------------------------------------------------------------------
+
   const shared = {
     type: "range" as const,
     min,
     max,
     step,
     disabled,
-    onPointerUp: finish,
     onKeyUp: (e: React.KeyboardEvent) => KEYS.has(e.key) && finish(),
   };
 
-  const thumbProps = (which: "min" | "max") => {
+  const thumbProps = (which: Thumb) => {
     const isMin = which === "min";
     const val = isMin ? current.min : current.max;
     const top = isMin ? minOnTop : !minOnTop;
     return {
       ...shared,
+      ref: isMin ? minInput : maxInput,
       className: cx("thumb", `rs-thumb rs-thumb-${which}`),
       name: name ? `${name}-${which}` : undefined,
       "aria-label": isMin ? minAriaLabel : maxAriaLabel,
       "aria-valuetext": fmt(val),
+      "data-hover": hover === which ? "" : undefined,
+      "data-dragging": dragging === which ? "" : undefined,
       value: val,
       style: { ...styles.thumb, zIndex: top ? 4 : 3 },
       onFocus: () => setActive(which),
-      onPointerDown: () => setActive(which),
-      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-        const n = Number(e.target.value);
-        commit(
-          isMin
-            ? { min: clamp(n, min, current.max - gap), max: current.max }
-            : { min: current.min, max: clamp(n, current.min + gap, max) }
-        );
-      },
+      // Keyboard, assistive tech and form autofill arrive here as native input events.
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => setThumb(which, Number(e.target.value)),
     };
   };
 
-  const tip = (which: "min" | "max") =>
+  const tip = (which: Thumb) =>
     tipMode && (
       <div
         className={cx("tooltip", "rs-tooltip")}
@@ -238,7 +360,18 @@ const MultiRangeSlider: FC<MultiRangeSliderProps> = ({
       data-theme={theme}
       data-disabled={disabled || undefined}
     >
-      <div className={cx("control", "rs-control")} style={styles.control}>
+      <div
+        className={cx("control", "rs-control")}
+        style={styles.control}
+        data-hover={hover ? "" : undefined}
+        data-dragging={dragging ? "" : undefined}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onLostPointerCapture={endDrag}
+        onPointerLeave={() => hover && setHover(null)}
+      >
         <div className="rs-rail">
           <div className={cx("track", "rs-track")} style={styles.track} />
           <div className={cx("range", "rs-range")} style={styles.range} />

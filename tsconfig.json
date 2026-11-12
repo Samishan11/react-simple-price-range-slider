@@ -11,5 +11,6 @@
     "noEmit": true,
     "types": ["vitest/globals", "@testing-library/jest-dom"]
   },
-  "include": ["src", "tests", "playground"]
+  "include": ["src", "tests", "playground", "e2e"],
+  "exclude": ["e2e/vite.config.ts"]
 }
