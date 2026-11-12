@@ -19,6 +19,7 @@
 - **`disabledThumbs`** locks thumbs by index (pressing one does nothing; neighbours stop at it). **`readOnly`** shows the value, stays focusable for screen readers (`aria-readonly`) and ignores input.
 - **`snapToMarks`**: thumbs stop only at mark values, from the pointer, the keyboard and assistive technology.
 - **`format` / `locale`**: formatting through `Intl.NumberFormat`, e.g. `format={{ style: "currency", currency: "EUR" }} locale="de-DE"`.
+- **`maxGap`**: a maximum distance between neighbouring thumbs (`"block"` stops there, `"push"` pulls the neighbour along).
 - **`onDragStart` / `onDragEnd`** callbacks (`{ thumb }`, `-1` for the range).
 - **A `ref` handle** (`RangeSliderHandle`): `element`, `focus(thumb)`, `blur()`, `getValue()`, `setValue()` in the slider's value shape.
 - `min` / `max` are optional (0 / 100).
@@ -41,6 +42,9 @@
 - **`onChangeEnd` fires for assistive technology**: a screen reader's increment (e.g. a VoiceOver swipe) never ended an adjustment before.
 - Assistive-technology increments always move at least one step, even when the browser's own increment is smaller than `step`.
 - The focus ring follows the input method: shown for keyboard focus, hidden after a pointer press, back as soon as a key is pressed.
+
+### Internal
+- CI runs once per pull request (pushes only on `main`), cancels superseded runs, and runs the unit tests and package checks on Node 22 and 24 (Node 20 is end-of-life). GitHub Actions moved to their Node 24 releases.
 
 ## 2.1.0
 

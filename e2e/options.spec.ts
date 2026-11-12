@@ -56,6 +56,13 @@ test.describe("collision", () => {
     expect(await values(page)).toEqual([90, 90, 90]);
   });
 
+  test("maxGap: a dragged thumb stops at the maximum distance from its neighbour", async ({ page }) => {
+    await open(page, "max-gap");
+    const { box, y, at } = await geometry(page, 0, 100);
+    await drag(page, { x: at(40), y }, box.x + box.width + 40);
+    expect(await values(page)).toEqual([20, 50]);
+  });
+
   test("swap: a dragged thumb passes its neighbour and stays under the pointer", async ({ page }) => {
     await open(page, "swap");
     const { y, at } = await geometry(page, 0, 100);

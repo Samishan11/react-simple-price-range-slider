@@ -37,6 +37,8 @@ export interface UseRangeSliderOptions {
   onDragEnd?: (meta: DragMeta) => void;
   /** Minimum distance between neighbouring thumbs. Default `0`: thumbs can meet. */
   minGap?: number;
+  /** Maximum distance between neighbouring thumbs ("block" stops there; "push" pulls the neighbour along). */
+  maxGap?: number;
   /** When a thumb meets its neighbour: stop (`"block"`, default), push it, or pass it (`"swap"`). */
   collision?: Collision;
   /** Size of a PageUp/PageDown or Shift+Arrow step. Default: about 10% of the range. */
@@ -130,6 +132,7 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
     max,
     step = 1,
     minGap,
+    maxGap,
     largeStep,
     collision = "block",
     disabled = false,
@@ -185,7 +188,8 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
 
   const span = max - min || 1;
   const fractions = values.map((v) => (v - min) / span);
-  const bounds = { min, max, step: typeof step === "number" ? step : 0, gap: Math.max(minGap ?? 0, 0) };
+  const gap = Math.max(minGap ?? 0, 0);
+  const bounds = { min, max, step: typeof step === "number" ? step : 0, gap, maxGap: maxGap === undefined ? undefined : Math.max(maxGap, gap) };
 
   // The latest values, including a change committed in this event that hasn't rendered yet,
   // so onChangeEnd never reports a stale value.

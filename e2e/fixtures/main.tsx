@@ -46,6 +46,7 @@ const cases: Record<string, Case> = {
   form: { min: 0, max: 100, defaultValue: { min: 20, max: 80 }, name: "price" },
   draggable: { min: 0, max: 100, defaultValue: [30, 60], draggableRange: true },
   push: { min: 0, max: 100, defaultValue: [20, 50, 80], collision: "push" },
+  "max-gap": { min: 0, max: 100, defaultValue: [20, 40], maxGap: 30 },
   swap: { min: 0, max: 100, defaultValue: [20, 50], collision: "swap" },
   "disabled-thumb": { min: 0, max: 100, defaultValue: [20, 80], disabledThumbs: [true, false] },
   readonly: { min: 0, max: 100, defaultValue: [20, 80], readOnly: true },

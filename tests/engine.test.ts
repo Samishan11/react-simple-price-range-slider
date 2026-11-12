@@ -98,6 +98,34 @@ describe("collisions", () => {
   });
 });
 
+describe("maxGap", () => {
+  const b = { min: 0, max: 100, step: 1, gap: 0, maxGap: 30 };
+
+  it("block: a thumb stops at maxGap from its neighbour, both ways", () => {
+    expect(moveThumb([20, 40], 1, 90, b)).toEqual([20, 50]);
+    expect(moveThumb([20, 40], 0, 0, b)).toEqual([10, 40]);
+    expect(moveThumb([20, 40, 60], 1, 95, b)).toEqual([20, 50, 60]);
+  });
+
+  it("block: minGap and maxGap together", () => {
+    expect(moveThumb([20, 40], 1, 21, { ...b, gap: 5 })).toEqual([20, 25]);
+  });
+
+  it("push: the thumbs left behind are pulled along", () => {
+    expect(pushThumb([20, 40], 1, 90, b)).toEqual([60, 90]);
+    expect(pushThumb([20, 40, 60], 2, 100, b)).toEqual([40, 70, 100]);
+    expect(pushThumb([20, 40], 0, 0, b)).toEqual([0, 30]);
+  });
+
+  it("push: a locked thumb can't be pulled, so the move stops", () => {
+    expect(pushThumb([20, 40], 1, 90, b, [true, false])).toEqual([20, 50]);
+  });
+
+  it("keeps decimals clean", () => {
+    expect(moveThumb([0.2, 0.3], 1, 0.9, { min: 0, max: 1, step: 0.1, gap: 0, maxGap: 0.3 })).toEqual([0.2, 0.5]);
+  });
+});
+
 describe("shiftAll (dragging the range)", () => {
   const b = { min: 0, max: 100, step: 1, gap: 0 };
 

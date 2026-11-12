@@ -89,6 +89,7 @@ import { RangeSlider } from "react-multi-input-rangeslider";
 | `largeStep` | `number` | ~10% of the range | Step for PageUp / PageDown and Shift + arrows. |
 | `onDragStart` / `onDragEnd` | `({ thumb }) => void` | — | A pointer drag of a thumb starts / ends (`thumb` is `-1` for the whole range). |
 | `minGap` | `number` | `0` | Minimum distance between neighbouring thumbs. `0` lets them meet. |
+| `maxGap` | `number` | — | Maximum distance between neighbouring thumbs: with `"block"` a thumb stops there, with `"push"` it pulls its neighbour along. |
 | `collision` | `"block" \| "push" \| "swap"` | `"block"` | When a thumb meets its neighbour: it stops, pushes the neighbour along, or passes it (`minGap` doesn't apply to `"swap"`). |
 | `draggableRange` | `boolean` | `false` | Press the filled range and drag to move all thumbs together. |
 | `disabledThumbs` | `boolean[]` | — | Lock thumbs by index, e.g. `[true, false]`. Pressing a locked thumb does nothing. |
