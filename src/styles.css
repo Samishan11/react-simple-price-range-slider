@@ -36,10 +36,18 @@
   box-sizing: border-box;
 }
 
+/* The control receives every pointer press (thumbs and track); see RangeSlider.tsx. */
 .rs-control {
   position: relative;
   height: var(--rs-thumb-size);
+  cursor: pointer;
+  touch-action: pan-y; /* horizontal drags move a thumb, vertical swipes still scroll the page */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
+.rs-control[data-hover] { cursor: grab; }
+.rs-control[data-dragging] { cursor: grabbing; }
 
 /* The rail is inset by half a thumb so the fill lines up with thumb centres. */
 .rs-rail {
@@ -75,8 +83,7 @@
   padding: 0;
   background: transparent;
   outline: none;
-  pointer-events: none;
-  touch-action: pan-y; /* horizontal drags move the thumb, not the page */
+  pointer-events: none; /* the inputs draw the thumbs and handle keyboard/AT; the control handles the pointer */
   -webkit-appearance: none;
   appearance: none;
   -webkit-tap-highlight-color: transparent;
@@ -92,35 +99,36 @@
   border: 0;
 }
 
+/* border-box everywhere: Firefox defaults to content-box, which made its thumbs 4px larger
+   than --rs-thumb-size and pulled them up to 2px off the fill. */
 .rs-thumb::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
+  box-sizing: border-box;
   width: var(--rs-thumb-size);
   height: var(--rs-thumb-size);
   border-radius: 50%;
   background: var(--rs-thumb-color);
   border: var(--rs-thumb-border-width) solid var(--rs-thumb-border-color);
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
-  cursor: grab;
-  pointer-events: all;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 .rs-thumb::-moz-range-thumb {
+  box-sizing: border-box;
   width: var(--rs-thumb-size);
   height: var(--rs-thumb-size);
   border-radius: 50%;
   background: var(--rs-thumb-color);
   border: var(--rs-thumb-border-width) solid var(--rs-thumb-border-color);
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
-  cursor: grab;
-  pointer-events: all;
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 
-.rs-thumb:hover::-webkit-slider-thumb { transform: scale(1.1); }
-.rs-thumb:hover::-moz-range-thumb { transform: scale(1.1); }
-.rs-thumb:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.18); }
-.rs-thumb:active::-moz-range-thumb { cursor: grabbing; transform: scale(1.18); }
+/* Thumbs don't receive the pointer themselves, so hover/drag states come as data attributes. */
+.rs-thumb[data-hover]::-webkit-slider-thumb { transform: scale(1.1); }
+.rs-thumb[data-hover]::-moz-range-thumb { transform: scale(1.1); }
+.rs-thumb[data-dragging]::-webkit-slider-thumb { transform: scale(1.18); }
+.rs-thumb[data-dragging]::-moz-range-thumb { transform: scale(1.18); }
 .rs-thumb:focus-visible::-webkit-slider-thumb {
   box-shadow: var(--rs-focus-ring), 0 1px 3px rgb(0 0 0 / 0.25);
 }
@@ -129,8 +137,7 @@
 }
 
 .rs-root[data-disabled] { opacity: 0.5; }
-.rs-root[data-disabled] .rs-thumb::-webkit-slider-thumb { cursor: not-allowed; }
-.rs-root[data-disabled] .rs-thumb::-moz-range-thumb { cursor: not-allowed; }
+.rs-root[data-disabled] .rs-control { cursor: not-allowed; }
 
 .rs-values {
   display: flex;
@@ -142,9 +149,12 @@
   font-weight: 500;
 }
 
+/* One rule per vendor pseudo-element: browsers drop a whole selector list that contains
+   one they don't know (Chrome and Safari ignored this block entirely before 2.1.0). */
 @media (prefers-reduced-motion: reduce) {
-  .rs-thumb::-webkit-slider-thumb,
+  .rs-thumb::-webkit-slider-thumb { transition: none; }
   .rs-thumb::-moz-range-thumb { transition: none; }
+  .rs-tooltip { transition: none; }
 }
 
 /* ---- tooltip ---- */
@@ -177,15 +187,15 @@
   border-top-color: var(--rs-tooltip-bg);
 }
 .rs-tooltip[data-show="always"],
-.rs-thumb:hover + .rs-tooltip,
-.rs-thumb:active + .rs-tooltip,
+.rs-thumb[data-hover] + .rs-tooltip,
+.rs-thumb[data-dragging] + .rs-tooltip,
 .rs-thumb:focus-visible + .rs-tooltip {
   opacity: 1;
   transform: translateX(-50%);
 }
 .rs-root[dir="rtl"] .rs-tooltip[data-show="always"],
-.rs-root[dir="rtl"] .rs-thumb:hover + .rs-tooltip,
-.rs-root[dir="rtl"] .rs-thumb:active + .rs-tooltip,
+.rs-root[dir="rtl"] .rs-thumb[data-hover] + .rs-tooltip,
+.rs-root[dir="rtl"] .rs-thumb[data-dragging] + .rs-tooltip,
 .rs-root[dir="rtl"] .rs-thumb:focus-visible + .rs-tooltip {
   transform: translateX(50%);
 }

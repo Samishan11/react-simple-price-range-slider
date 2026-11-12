@@ -5,7 +5,7 @@
 [![types](https://img.shields.io/npm/types/react-multi-input-rangeslider.svg)](https://www.npmjs.com/package/react-multi-input-rangeslider)
 [![license](https://img.shields.io/npm/l/react-multi-input-rangeslider.svg)](LICENSE)
 
-A small, accessible, themeable **dual-thumb range slider** for React — built for price filters and any other numeric range. Zero runtime dependencies, TypeScript types included, works with React 16.8 – 19 and server rendering.
+A small, accessible, themeable **dual-thumb range slider** for React — built for price filters and any other numeric range. Zero runtime dependencies, TypeScript types included, works with React 16.8 – 19, server rendering and React Server Components (Next.js App Router).
 
 ![Preview](docs/preview.png)
 
@@ -13,7 +13,8 @@ A small, accessible, themeable **dual-thumb range slider** for React — built f
 - `step`, `minGap`, `disabled`, custom value formatting (`Intl.NumberFormat`, currencies, units…)
 - Themeable with **CSS variables**; light / dark / auto themes
 - Value tooltips, tick marks (auto or custom labels), RTL
-- Accessible: native range inputs, labelled thumbs, keyboard support, 24px targets, forced-colors support
+- Precise pointer handling: click the track to jump, thumbs can meet exactly, and overlapping thumbs separate in the direction you drag
+- Accessible: native range inputs, labelled thumbs, keyboard support, 24px targets, forced-colors and reduced-motion support
 - Style any inner part via `classNames` / `styles`
 
 ## Install
@@ -66,7 +67,7 @@ Uncontrolled? Drop `value` and use `defaultValue` (or nothing, to start at the f
 | `onChange` | `(v: { min, max }) => void` | — | Called on every change while dragging or using the keyboard. |
 | `onChangeEnd` | `(v: { min, max }) => void` | — | Called once when a drag or key press ends. Handy for fetching. |
 | `step` | `number` | `1` | Slider granularity. |
-| `minGap` | `number` | `step` | Minimum distance between the thumbs. |
+| `minGap` | `number` | `0` | Minimum distance between the thumbs. `0` lets them meet. |
 | `disabled` | `boolean` | `false` | Disable both thumbs. |
 | `formatValue` | `(n: number) => string` | `` `${currencyText}${n}` `` | Formats the displayed values, tooltips, labels and `aria-valuetext`. |
 | `showValues` | `boolean` | `true` | Show the `min – max` row under the slider. |
@@ -130,11 +131,14 @@ Dark mode: `theme="dark"`, or `theme="auto"` to follow `prefers-color-scheme`.
 
 ```sh
 npm install
-npm run dev        # playground at http://localhost:5173
-npm test           # vitest
+npm run dev            # playground at http://localhost:5173
+npm test               # unit tests (vitest + jsdom)
+npm run test:e2e       # real-browser tests: Chromium, Firefox, WebKit (first run: npx playwright install)
 npm run typecheck
-npm run build      # dist/ (ESM, CJS, d.ts, style.css)
-npm run docs       # static playground into ./site
+npm run build          # dist/ (ESM, CJS, d.ts, style.css)
+npm run check:package  # after build: publint, attw, "use client", size budget
+npm run test:consumer  # after build: installs the packed tarball into a Next.js app and builds it
+npm run docs           # static playground into ./site
 ```
 
 ## License

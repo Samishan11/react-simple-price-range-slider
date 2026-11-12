@@ -1,14 +1,17 @@
 {
   "name": "react-multi-input-rangeslider",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Accessible, themeable dual-thumb range slider for React (price ranges and more). Controlled/uncontrolled, tooltips, marks, RTL, dark mode, CSS-variable theming.",
   "main": "dist/index.cjs",
   "scripts": {
     "build": "tsup && cp src/styles.css dist/style.css",
-    "prepublishOnly": "npm run typecheck && npm test && npm run build",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build && npm run check:package",
     "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:consumer": "node scripts/consumer-smoke.mjs",
+    "check:package": "publint --strict && attw --pack . --exclude-entrypoints ./style.css ./style/style.css && node scripts/check-package.mjs",
     "dev": "vite",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
     "docs": "vite build --base ./ --outDir ../site --emptyOutDir"
   },
   "keywords": [
@@ -37,13 +40,18 @@
     "react-dom": ">=16.8.0 <20"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@playwright/test": "1.64.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.9",
+    "@types/node": "^20.19.42",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^6.3.0",
+    "esbuild": "^0.27.7",
     "jsdom": "^29.1.1",
+    "publint": "^0.3.25",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tslib": "^2.6.2",
@@ -59,9 +67,14 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./style.css": "./dist/style.css",
     "./style/style.css": "./dist/style.css",

@@ -1,5 +1,29 @@
 # Changelog
 
+## 2.1.0
+
+### Added
+- **Click the track** to move the nearest thumb there (and keep dragging).
+- **Overlapping thumbs separate in the direction you drag:** left moves the lower thumb, right the upper one. Before, the thumb drawn on top blocked the other, so overlapping thumbs could get stuck.
+- A grabbed thumb no longer jumps to the pointer, and dragging keeps tracking outside the slider.
+
+### Changed
+- **`minGap` now defaults to `0`:** the thumbs can meet and sit exactly on top of each other. It was `step`, which stopped them one step apart with a visible sliver. Pass `minGap={step}` for the old behaviour.
+- The control (`.rs-control`) now handles all pointer input; the thumb inputs (`.rs-thumb`) no longer receive the pointer. Hover and drag styles use `.rs-thumb[data-hover]` / `.rs-thumb[data-dragging]` instead of `:hover` / `:active`, so update custom CSS that targeted e.g. `.rs-thumb:hover::-webkit-slider-thumb`.
+- After a mouse drag the dragged thumb keeps keyboard focus (arrow keys continue), without a focus ring.
+
+### Fixed
+- **Next.js App Router / React Server Components:** the bundles now start with `"use client"`, so a Server Component can render the slider directly. Before, `next build` failed with `useState is not a function`.
+- **Types for CommonJS consumers:** `require` now resolves `index.d.cts`. Before, CJS projects using `moduleResolution: node16` / `nodenext` were given the ESM type declarations.
+- **Decimal steps:** values such as `0.30000000000000004` no longer reach `onChange`, the labels or `aria-valuetext` (e.g. `step={0.1}` with a `minGap`).
+- **Firefox thumb size:** thumbs rendered 4px larger than `--rs-thumb-size` and sat up to 2px off the fill. They now match Chrome and Safari.
+- **`prefers-reduced-motion`** was ignored in Chrome, Edge and Safari: one CSS rule listed both browsers' thumb selectors, so they dropped it. Thumb and tooltip animations now turn off.
+
+### Internal
+- Slider math lives in `src/engine.ts`: pure, unit-tested functions that the 3.0 engine will reuse.
+- Playwright end-to-end tests in Chromium, Firefox and WebKit: pointer, touch, keyboard and hover interactions, a pixel-geometry contract, and tests that pin down the remaining known 2.x bugs (off-grid `max`, tooltip collisions) for 3.0.
+- Package checks in CI: publint, are-the-types-wrong, a `"use client"` check, a size budget, and a smoke test that installs the packed tarball into a Next.js App Router app.
+
 ## 2.0.0
 
 ### Added

@@ -63,12 +63,24 @@ describe("uncontrolled", () => {
     expect(onChange).toHaveBeenLastCalledWith({ min: 90, max: 100 });
   });
 
-  it("gap defaults to step", () => {
+  it("gap defaults to 0, so the thumbs can meet (but never cross)", () => {
     const onChange = vi.fn();
-    render(<MultiRangeSlider min={0} max={100} step={5} onChange={onChange} />);
+    render(<MultiRangeSlider min={0} max={100} step={5} defaultValue={{ min: 20, max: 60 }} onChange={onChange} />);
     expect(sliders()[0]).toHaveAttribute("step", "5");
     change(0, 100);
-    expect(onChange).toHaveBeenLastCalledWith({ min: 95, max: 100 });
+    expect(onChange).toHaveBeenLastCalledWith({ min: 60, max: 60 });
+    change(1, 0);
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("never emits floating-point noise with decimal steps", () => {
+    const onChange = vi.fn();
+    render(<MultiRangeSlider min={0} max={1} step={0.1} minGap={0.1} defaultValue={{ min: 0.2, max: 0.4 }} onChange={onChange} />);
+    change(0, 0.9); // lower thumb runs into the upper one: 0.4 - 0.1
+    expect(onChange).toHaveBeenLastCalledWith({ min: 0.3, max: 0.4 });
+    expect(screen.getByText("$0.3")).toBeInTheDocument();
+    change(1, 0); // upper thumb runs into the lower one: 0.3 + 0.1 is 0.4 again
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -121,11 +133,12 @@ describe("misc", () => {
     expect(sliders()[1]).toHaveAttribute("name", "price-max");
   });
 
-  it("fires onChangeEnd on pointer up and arrow-key release", () => {
+  // Pointer drags need real layout, so they're covered in e2e/interaction.spec.ts.
+  it("fires onChangeEnd when a keyboard adjustment ends", () => {
     const onChangeEnd = vi.fn();
     render(<MultiRangeSlider min={0} max={100} onChangeEnd={onChangeEnd} />);
     change(0, 20);
-    fireEvent.pointerUp(sliders()[0]);
+    fireEvent.keyUp(sliders()[0], { key: "ArrowRight" });
     expect(onChangeEnd).toHaveBeenLastCalledWith({ min: 20, max: 100 });
     fireEvent.keyUp(sliders()[1], { key: "Tab" });
     expect(onChangeEnd).toHaveBeenCalledTimes(1);
@@ -133,8 +146,17 @@ describe("misc", () => {
     expect(onChangeEnd).toHaveBeenCalledTimes(2);
   });
 
+  it("ignores pointer presses before the slider is laid out", () => {
+    const onChange = vi.fn();
+    const { container } = render(<MultiRangeSlider min={0} max={100} onChange={onChange} />);
+    const control = container.querySelector(".rs-control")!;
+    fireEvent.pointerDown(control, { pointerId: 1, clientX: 10 });
+    fireEvent.pointerUp(control, { pointerId: 1, clientX: 10 });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it("puts the min thumb on top when both thumbs sit at the max end", () => {
-    render(<MultiRangeSlider min={0} max={100} defaultValue={{ min: 99, max: 100 }} />);
+    render(<MultiRangeSlider min={0} max={100} defaultValue={{ min: 100, max: 100 }} />);
     expect(sliders()[0].style.zIndex).toBe("4");
     expect(sliders()[1].style.zIndex).toBe("3");
   });
