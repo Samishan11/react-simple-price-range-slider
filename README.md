@@ -340,6 +340,14 @@ npm run test:consumer  # after build: installs the packed tarball into a Next.js
 npm run docs           # static playground into ./site
 ```
 
+### Releasing
+
+1. In a pull request, bump `version` (e.g. `npm version 3.0.0 --no-git-tag-version`) and add the `CHANGELOG.md` section.
+2. After it merges, publish a GitHub release for the tag `v<version>` on `main`, with the changelog section as notes. Mark versions like `3.0.0-rc.1` as a pre-release.
+3. The **Publish** workflow checks that the tag matches `package.json`, runs the publish checks, and publishes with [npm trusted publishing](https://docs.npmjs.com/trusted-publishers) (no npm token; provenance included): releases to `latest`, pre-releases to `next`.
+
+Run the Publish workflow from the Actions tab for a dry run.
+
 ## License
 
 MIT

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Internal
+- Releases publish from GitHub Actions with npm trusted publishing: publishing a GitHub release runs the publish checks and publishes, with no npm token stored anywhere and a provenance attestation on npm. Pre-releases go to `next`, releases to `latest`.
+
 ## 3.0.0-rc.0
 
 Release candidate for 3.0, on the `next` tag: `npm install react-multi-input-rangeslider@next`. Every 2.x prop still works; see [Migrating from 2.x to 3.0](README.md#migrating-from-2x-to-30) if you wrote CSS against the markup.
