@@ -1,0 +1,5 @@
+/* What a Tailwind v4 app does with the published files: Tailwind first, then the slider's
+   defaults in the components layer (dist/style.layer.css wraps them the same way). */
+@import "tailwindcss";
+@import "../../src/styles.css" layer(components);
+@source "./tailwind.tsx";

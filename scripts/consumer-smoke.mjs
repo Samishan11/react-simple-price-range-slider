@@ -18,7 +18,8 @@ console.log("ESM import OK");`;
 const cjsCheck = `const m = require("react-multi-input-rangeslider");
 if (typeof m.default !== "function" || m.default !== m.MultiRangeSlider) throw new Error("CJS exports are wrong");
 require.resolve("react-multi-input-rangeslider/style.css");
-console.log("CJS require + CSS export OK");`;
+require.resolve("react-multi-input-rangeslider/style.layer.css");
+console.log("CJS require + CSS exports OK");`;
 
 try {
   run(`npm pack --silent --pack-destination "${work}"`, root);

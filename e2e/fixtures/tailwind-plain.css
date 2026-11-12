@@ -1,0 +1,4 @@
+/* The plain stylesheet next to Tailwind: unlayered, so it beats every utility class. */
+@import "tailwindcss";
+@import "../../src/styles.css";
+@source "./tailwind.tsx";

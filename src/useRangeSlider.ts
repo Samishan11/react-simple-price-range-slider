@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, type CSSProperties } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import {
   centerAt,
   fractionAt,
@@ -49,11 +49,16 @@ const POINTER_FOCUS = { preventScroll: true, focusVisible: false } as FocusOptio
 /** Keys whose release commits a keyboard adjustment (fires onChangeEnd). */
 const COMMIT_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"]);
 
-/** Thumb diameter from the theme; 24px when the stylesheet isn't loaded. */
-const SIZE = "var(--rs-thumb-size, 24px)";
-/** Offset that puts an element's anchor at track fraction `f`. Thumbs travel inside the control. */
-const along = (f: number) => `calc(${SIZE} / 2 + (100% - ${SIZE}) * ${f})`;
+/**
+ * Thumb diameter until the real thumb has been measured (first render, server rendering):
+ * the theme variable, or 24px without the stylesheet.
+ */
+const THEME_SIZE = "var(--rs-thumb-size, 24px)";
 const percent = (f: number) => `${f * 100}%`;
+
+// Layout effects measure before the browser paints; on the server they do nothing, so use
+// useEffect there to avoid React's server warning.
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 /** Invisible, but focusable and in the accessibility tree; it covers its thumb so screen readers outline the thumb. */
 const HIDDEN_INPUT: CSSProperties = {
@@ -121,9 +126,32 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
   const active = Math.min(lastUsed, count - 1);
 
   const controlRef = useRef<HTMLDivElement | null>(null);
+  const thumbs = useRef<(HTMLElement | null)[]>([]);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
   const drag = useRef<Drag | null>(null);
   const lastMeta = useRef<ChangeMeta>({ thumb: 0, source: "pointer" });
+
+  // Thumbs can be sized by anything (the theme variable, utility classes), so positions and
+  // pointer math use the first thumb's measured size. Layout size ignores hover/drag scaling.
+  const [thumbPx, setThumbPx] = useState<number | null>(null);
+  const measureThumb = () => {
+    const t = thumbs.current[0];
+    const px = t ? (vertical ? t.offsetHeight : t.offsetWidth) : 0;
+    return px > 0 ? px : null;
+  };
+  useIsoLayoutEffect(() => {
+    const update = () => setThumbPx(measureThumb());
+    update();
+    const t = thumbs.current[0];
+    if (!t || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(t, { box: "border-box" });
+    return () => observer.disconnect();
+  }, [vertical, count]);
+  /** The thumb diameter as CSS: measured once mounted, the theme's before that. */
+  const size = thumbPx ? `${thumbPx}px` : THEME_SIZE;
+  /** Offset that puts an element's anchor at track fraction `f`. Thumbs travel inside the control. */
+  const along = (f: number) => `calc(${size} / 2 + (100% - ${size}) * ${f})`;
 
   const span = max - min || 1;
   const fractions = values.map((v) => (v - min) / span);
@@ -164,8 +192,8 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
 
   const layoutOf = (el: HTMLElement): Layout => {
     const r = el.getBoundingClientRect();
-    if (vertical) return { start: r.top, length: r.height, size: r.width, reversed: !inverted };
-    return { start: r.left, length: r.width, size: r.height, reversed: isRtl(el) !== inverted };
+    if (vertical) return { start: r.top, length: r.height, size: measureThumb() ?? r.width, reversed: !inverted };
+    return { start: r.left, length: r.width, size: measureThumb() ?? r.height, reversed: isRtl(el) !== inverted };
   };
   const posOf = (e: { clientX: number; clientY: number }) => (vertical ? e.clientY : e.clientX);
   const centersFor = (l: Layout) => fractions.map((f) => centerAt(f, l));
@@ -273,7 +301,7 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
       ? { [inverted ? "top" : "bottom"]: along(f) }
       : { [inverted ? "insetInlineEnd" : "insetInlineStart"]: along(f) };
 
-  const half = `calc(${SIZE} / -2)`;
+  const half = `calc(${size} / -2)`;
   const lo = count > 1 ? fractions[0] : 0;
   const hi = fractions[count - 1];
 
@@ -292,10 +320,17 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
     dragging,
     focusVisible,
     alongStyle,
+    /** The thumb diameter as a CSS length (measured once mounted). */
+    thumbSize: size,
 
     getControlProps: () => ({
       ref: controlRef,
-      style: { position: "relative", touchAction: vertical ? "pan-x" : "pan-y" } as CSSProperties,
+      // At least one thumb thick, so thumbs never hang outside the slider's box.
+      style: {
+        position: "relative",
+        touchAction: vertical ? "pan-x" : "pan-y",
+        [vertical ? "minWidth" : "minHeight"]: size,
+      } as CSSProperties,
       "data-hover": attr(hover !== null),
       "data-dragging": attr(dragging !== null),
       onPointerDown,
@@ -310,8 +345,8 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
 
     getTrackProps: () => ({
       style: (vertical
-        ? { position: "absolute", top: `calc(${SIZE} / 2)`, bottom: `calc(${SIZE} / 2)`, left: 0, right: 0, marginInline: "auto" }
-        : { position: "absolute", insetInline: `calc(${SIZE} / 2)`, top: 0, bottom: 0, marginBlock: "auto" }) as CSSProperties,
+        ? { position: "absolute", top: `calc(${size} / 2)`, bottom: `calc(${size} / 2)`, left: 0, right: 0, marginInline: "auto" }
+        : { position: "absolute", insetInline: `calc(${size} / 2)`, top: 0, bottom: 0, marginBlock: "auto" }) as CSSProperties,
     }),
 
     /** The filled part: between the outer thumbs, or from the min end with a single thumb. */
@@ -328,6 +363,9 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
     }),
 
     getThumbProps: (i: number) => ({
+      ref: (el: HTMLElement | null) => {
+        thumbs.current[i] = el;
+      },
       style: {
         position: "absolute",
         ...(vertical

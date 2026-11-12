@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { act, render, screen, fireEvent } from "@testing-library/react";
 import MultiRangeSlider, { RangeSlider, RangeValues } from "../src";
 
 const sliders = () => screen.getAllByRole("slider") as HTMLInputElement[];
@@ -318,6 +318,67 @@ describe("theme, tooltips, marks, slots", () => {
     expect(container.firstElementChild).toHaveClass("rs-root", "r");
     expect(container.querySelectorAll(".rs-thumb.t")).toHaveLength(2);
     expect(container.querySelector(".rs-range.g")).toHaveStyle({ opacity: "0.5" });
+  });
+});
+
+describe("customization", () => {
+  it("unstyled leaves out every built-in class, keeps your classes and the inline layout", () => {
+    const { container } = render(
+      <RangeSlider
+        unstyled
+        defaultValue={[20, 80]}
+        tooltip="always"
+        marks={2}
+        classNames={{ thumb: "t", tooltipLabel: "tl", markLabel: "ml", separator: "sep" }}
+      />
+    );
+    expect(container.querySelectorAll('[class*="rs-"]')).toHaveLength(0);
+    expect(container.querySelectorAll(".t")).toHaveLength(2);
+    expect(container.querySelectorAll(".tl")).toHaveLength(2);
+    expect(container.querySelectorAll(".ml")).toHaveLength(3);
+    expect(container.querySelectorAll(".sep")).toHaveLength(1);
+    const anchor = container.querySelector(".tl")!.parentElement!;
+    expect(anchor.style.position).toBe("absolute");
+    expect(anchor.style.display).toBe("flex");
+    expect(sliders()[0].style.opacity).toBe("0"); // the inputs stay hidden without the stylesheet
+  });
+
+  it("renderThumb puts content inside each thumb", () => {
+    const { container } = render(
+      <RangeSlider
+        defaultValue={[20, 80]}
+        renderThumb={({ index, formatted, active }) => (
+          <b data-testid={`grip-${index}`}>
+            {formatted}
+            {active ? "*" : ""}
+          </b>
+        )}
+      />
+    );
+    const thumbs = container.querySelectorAll(".rs-thumb");
+    expect(thumbs[0]).toContainElement(screen.getByTestId("grip-0"));
+    expect(screen.getByTestId("grip-0")).toHaveTextContent("$20");
+    expect(screen.getByTestId("grip-1")).toHaveTextContent("$80*"); // the last thumb starts on top
+  });
+
+  it("renderTooltip replaces the label content", () => {
+    render(<RangeSlider defaultValue={[20, 80]} tooltip="always" renderTooltip={({ value }) => `${value} pts`} />);
+    expect(screen.getByText("20 pts")).toBeInTheDocument();
+    expect(screen.getByText("80 pts")).toBeInTheDocument();
+  });
+
+  // (jsdom never treats focus as :focus-visible, so a key press makes the thumb keyboard-focused here;
+  // e2e covers Tab focus in real browsers.)
+  it("marks tooltips data-visible: always, or for the keyboard-focused thumb in hover mode", () => {
+    const { container, rerender } = render(<RangeSlider defaultValue={[20, 80]} tooltip />);
+    const visible = () => container.querySelectorAll(".rs-tooltip[data-visible]");
+    expect(visible()).toHaveLength(0);
+    act(() => sliders()[1].focus());
+    key(1, "ArrowLeft");
+    expect(visible()).toHaveLength(1);
+    expect(container.querySelectorAll(".rs-tooltip")[1]).toHaveAttribute("data-visible");
+    rerender(<RangeSlider defaultValue={[20, 80]} tooltip="always" />);
+    expect(visible()).toHaveLength(2);
   });
 });
 
