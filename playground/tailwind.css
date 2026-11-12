@@ -1,0 +1,6 @@
+/* Tailwind for the playground's "unstyled" demo: theme and utilities only, without the
+   preflight reset, so the other demos keep their look. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@source "./main.tsx";

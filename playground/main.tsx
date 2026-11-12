@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import MultiRangeSlider, { RangeSlider, RangeValues } from "../src";
 import "../src/styles.css";
+import "./tailwind.css";
 
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const card: React.CSSProperties = { padding: "28px 24px 20px", borderRadius: 12, border: "1px solid #8884" };
@@ -51,6 +52,40 @@ function App() {
         <RangeSlider max={1000} step={10} defaultValue={[480, 520]} tooltip="always" formatValue={(n) => usd.format(n)} width="100%" />
         <div style={{ height: 12 }} />
         <RangeSlider max={1000} step={10} defaultValue={[0, 1000]} tooltip="always" formatValue={(n) => usd.format(n)} width="100%" />
+      </Section>
+      <Section title="v3 · unstyled + Tailwind classes (no stylesheet)">
+        <RangeSlider
+          unstyled
+          defaultValue={[25, 75]}
+          tooltip
+          formatValue={(n) => `${n}%`}
+          classNames={{
+            control: "h-5",
+            track: "h-1.5 rounded-full bg-violet-100",
+            range: "rounded-full bg-violet-600",
+            thumb:
+              "size-5 rounded-full border-2 border-violet-600 bg-white shadow-md transition-transform data-[dragging]:scale-125 data-[focus-visible]:ring-4 data-[focus-visible]:ring-violet-300",
+            tooltip: "opacity-0 transition-opacity data-[visible]:opacity-100",
+            tooltipLabel: "rounded-md bg-violet-600 px-2 py-0.5 text-xs font-semibold text-white",
+            values: "mt-3 flex justify-between text-sm font-medium text-violet-700",
+            separator: "hidden",
+          }}
+        />
+      </Section>
+      <Section title="v3 · custom thumb content (renderThumb)">
+        <RangeSlider
+          defaultValue={[30, 70]}
+          width="100%"
+          style={{ "--rs-thumb-size": "28px" } as React.CSSProperties}
+          renderThumb={({ dragging }) => (
+            <span
+              aria-hidden
+              style={{ display: "grid", placeItems: "center", height: "100%", fontSize: 11, fontWeight: 700, color: dragging ? "#1d4ed8" : "#93c5fd" }}
+            >
+              |||
+            </span>
+          )}
+        />
       </Section>
       <Section title="v3 · single thumb (number in, number out)">
         <RangeSlider defaultValue={40} tooltip ariaLabel="Volume" formatValue={(n) => `${n}%`} width="100%" />

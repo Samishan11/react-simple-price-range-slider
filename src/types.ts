@@ -31,10 +31,29 @@ export type SliderSlot =
   | "range"
   | "thumb"
   | "tooltip"
+  | "tooltipLabel"
   | "marks"
   | "mark"
+  | "markLabel"
   | "values"
-  | "value";
+  | "value"
+  | "separator";
+
+/** Everything a custom thumb or tooltip renderer needs to know about one thumb. */
+export interface ThumbState {
+  /** Index of the thumb (0 = lowest value). */
+  index: number;
+  value: number;
+  /** The value as `formatValue` (or the currency prefix) shows it. */
+  formatted: string;
+  /** Used last, so drawn on top. */
+  active: boolean;
+  hover: boolean;
+  dragging: boolean;
+  /** Focused from the keyboard (show a focus ring). */
+  focusVisible: boolean;
+  disabled: boolean;
+}
 
 export type Orientation = "horizontal" | "vertical";
 

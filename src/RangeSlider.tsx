@@ -1,8 +1,18 @@
-import React, { type CSSProperties, type ReactElement } from "react";
+import React, { type CSSProperties, type ReactElement, type ReactNode } from "react";
 import { fromValues, shapeOf, toValues, type Shape } from "./engine";
 import { useRangeSlider } from "./useRangeSlider";
 import { useTooltipLayout } from "./useTooltipLayout";
-import type { ChangeMeta, Mark, Orientation, RangeValues, SliderSlot, SliderValue, Step, ValueOf } from "./types";
+import type {
+  ChangeMeta,
+  Mark,
+  Orientation,
+  RangeValues,
+  SliderSlot,
+  SliderValue,
+  Step,
+  ThumbState,
+  ValueOf,
+} from "./types";
 
 export interface RangeSliderProps<V extends SliderValue = number[]> {
   /** Lowest value. Default `0`. */
@@ -55,10 +65,19 @@ export interface RangeSliderProps<V extends SliderValue = number[]> {
   tooltip?: boolean | "hover" | "always";
   /** Tick marks: `true` = 4 even intervals, a number = that many intervals, or `[{ value, label }]`. */
   marks?: boolean | number | Mark[];
+  /**
+   * Leave out the built-in `rs-*` class names, so the stylesheet doesn't apply and you style every
+   * part yourself (e.g. with Tailwind through `classNames`). Layout still works: positions are inline.
+   */
+  unstyled?: boolean;
   /** Extra class names for the inner parts, e.g. `{ thumb: "my-thumb" }`. */
   classNames?: Partial<Record<SliderSlot, string>>;
   /** Inline styles for the inner parts, e.g. `{ range: { borderRadius: 0 } }`. */
   styles?: Partial<Record<SliderSlot, CSSProperties>>;
+  /** Content inside each thumb: an icon, grip lines, the value… */
+  renderThumb?: (thumb: ThumbState) => ReactNode;
+  /** Content of each tooltip label instead of the formatted value. */
+  renderTooltip?: (thumb: ThumbState) => ReactNode;
   /** Sets the `--rs-range-color` CSS variable. */
   rangeColor?: string;
   /** Sets the `--rs-track-color` CSS variable. */
@@ -82,6 +101,20 @@ const resolveMarks = (marks: RangeSliderProps["marks"], min: number, max: number
     value: Number((min + ((max - min) * i) / n).toFixed(2)),
   }));
 };
+
+const TOOLTIP_OFFSET = "var(--rs-tooltip-offset, 8px)";
+const NO_WRAP: CSSProperties = { whiteSpace: "nowrap" };
+
+// Structure the layout depends on, inline so it holds without the stylesheet (and in `unstyled`
+// mode). Tooltips and marks are zero-size anchors at their point; their labels centre on it.
+const layout = (vertical: boolean) => ({
+  tooltip: (vertical
+    ? { position: "absolute", insetInlineStart: `calc(100% + ${TOOLTIP_OFFSET})`, height: 0, display: "flex", alignItems: "center", pointerEvents: "none" }
+    : { position: "absolute", bottom: `calc(100% + ${TOOLTIP_OFFSET})`, width: 0, display: "flex", justifyContent: "center", pointerEvents: "none" }) as CSSProperties,
+  mark: (vertical
+    ? { position: "absolute", left: 0, height: 0, display: "flex", alignItems: "center" }
+    : { position: "absolute", top: 0, width: 0, display: "flex", justifyContent: "center" }) as CSSProperties,
+});
 
 type ViewProps = RangeSliderProps<SliderValue> & { defaultShape: Shape };
 
@@ -111,8 +144,11 @@ function SliderView({
   dir,
   tooltip = false,
   marks,
+  unstyled = false,
   classNames = {},
   styles = {},
+  renderThumb,
+  renderTooltip,
   rangeColor,
   trackColor,
   width,
@@ -141,22 +177,48 @@ function SliderView({
 
   const { values } = s;
   const count = values.length;
+  const vertical = orientation === "vertical";
+  const parts = layout(vertical);
   const span = max - min || 1;
   const fmt = (n: number) => (formatValue ? formatValue(n) : `${currencyText}${n}`);
-  const cx = (slot: SliderSlot, base: string) => [base, classNames[slot]].filter(Boolean).join(" ");
+  /** Built-in class (left out when unstyled) plus the user's class for that part. */
+  const cx = (slot: SliderSlot, base: string) => [unstyled ? "" : base, classNames[slot]].filter(Boolean).join(" ") || undefined;
   const tipMode = tooltip === true ? "hover" : tooltip || undefined;
+  const markList = resolveMarks(marks, min, max);
+  const inRange = (v: number) => (count > 1 ? v >= values[0] && v <= values[count - 1] : v <= values[0]);
+
+  const stateOf = (i: number): ThumbState => ({
+    index: i,
+    value: values[i],
+    formatted: fmt(values[i]),
+    active: i === s.active,
+    hover: i === s.hover,
+    dragging: i === s.dragging,
+    focusVisible: i === s.focusVisible,
+    disabled,
+  });
+  const tipContent = (i: number) => (renderTooltip ? renderTooltip(stateOf(i)) : fmt(values[i]));
+  const tipVisible = (i: number) =>
+    tipMode === "always" || i === s.hover || i === s.dragging || i === s.focusVisible;
+
   const tips = useTooltipLayout({
     enabled: !!tipMode,
     merge: tipMode === "always",
-    vertical: orientation === "vertical",
+    vertical,
     count,
     control: s.controlRef,
   });
   const mergedInto = new Set(tips.layout.merged.flat());
   /** One label for a merged group: "$480 – $520", or a single value when the thumbs coincide. */
-  const mergedText = (group: number[]) => Array.from(new Set(group.map((i) => fmt(values[i])))).join(" – ");
-  const markList = resolveMarks(marks, min, max);
-  const inRange = (v: number) => (count > 1 ? v >= values[0] && v <= values[count - 1] : v <= values[0]);
+  const mergedContent = (group: number[]) => {
+    const distinct = group.filter((i, k) => k === 0 || values[i] !== values[group[k - 1]]);
+    return distinct.map((i, k) => (
+      <React.Fragment key={i}>
+        {k > 0 && " – "}
+        {tipContent(i)}
+      </React.Fragment>
+    ));
+  };
 
   const labelFor = (i: number) =>
     getAriaLabel?.(i) ??
@@ -179,7 +241,7 @@ function SliderView({
 
   return (
     <div
-      className={[cx("root", "rs-root"), className].filter(Boolean).join(" ")}
+      className={[cx("root", "rs-root"), className].filter(Boolean).join(" ") || undefined}
       style={rootStyle}
       role={count > 1 ? "group" : undefined}
       aria-label={count > 1 ? ariaLabel : undefined}
@@ -200,11 +262,12 @@ function SliderView({
               <div {...thumbProps} className={thumbClass(i)} style={{ ...thumbProps.style, ...styles.thumb }}>
                 <input
                   {...s.getInputProps(i)}
-                  className="rs-input"
+                  className={unstyled ? undefined : "rs-input"}
                   name={nameFor(i)}
                   aria-label={labelFor(i)}
                   aria-valuetext={fmt(v)}
                 />
+                {renderThumb?.(stateOf(i))}
               </div>
               {tipMode && (
                 <div
@@ -212,8 +275,15 @@ function SliderView({
                     tips.anchors.current[i] = el;
                   }}
                   className={cx("tooltip", "rs-tooltip")}
-                  style={{ ...s.alongStyle(s.fractions[i]), ...styles.tooltip }}
+                  style={{
+                    ...parts.tooltip,
+                    ...s.alongStyle(s.fractions[i]),
+                    // Merged into a shared label: keep it measurable, but unseen.
+                    ...(mergedInto.has(i) ? { visibility: "hidden" } : null),
+                    ...styles.tooltip,
+                  }}
                   data-show={tipMode === "always" ? "always" : undefined}
+                  data-visible={tipVisible(i) && !mergedInto.has(i) ? "" : undefined}
                   data-merged={mergedInto.has(i) ? "" : undefined}
                   aria-hidden="true"
                 >
@@ -221,10 +291,10 @@ function SliderView({
                     ref={(el) => {
                       tips.labels.current[i] = el;
                     }}
-                    className="rs-tooltip-label"
-                    style={tips.shiftStyle(tips.layout.shifts[i])}
+                    className={cx("tooltipLabel", "rs-tooltip-label")}
+                    style={{ position: "relative", ...NO_WRAP, ...tips.shiftStyle(tips.layout.shifts[i]), ...styles.tooltipLabel }}
                   >
-                    {fmt(v)}
+                    {tipContent(i)}
                   </span>
                 </div>
               )}
@@ -236,35 +306,39 @@ function SliderView({
             key={group.join("-")}
             className={cx("tooltip", "rs-tooltip rs-tooltip-merged")}
             style={{
+              ...parts.tooltip,
               ...s.alongStyle((s.fractions[group[0]] + s.fractions[group[group.length - 1]]) / 2),
               ...styles.tooltip,
             }}
             data-show="always"
+            data-visible=""
             aria-hidden="true"
           >
             <span
               ref={(el) => {
                 tips.mergedLabels.current[gi] = el;
               }}
-              className="rs-tooltip-label"
-              style={tips.shiftStyle(tips.layout.mergedShifts[gi])}
+              className={cx("tooltipLabel", "rs-tooltip-label")}
+              style={{ position: "relative", ...NO_WRAP, ...tips.shiftStyle(tips.layout.mergedShifts[gi]), ...styles.tooltipLabel }}
             >
-              {mergedText(group)}
+              {mergedContent(group)}
             </span>
           </div>
         ))}
       </div>
       {markList.length > 0 && (
-        <div className={cx("marks", "rs-marks")} style={styles.marks} aria-hidden="true">
+        <div className={cx("marks", "rs-marks")} style={{ position: "relative", ...styles.marks }} aria-hidden="true">
           {markList.map((m) => (
             <span
               key={m.value}
               className={cx("mark", "rs-mark")}
-              style={{ ...s.alongStyle((m.value - min) / span), ...styles.mark }}
+              style={{ ...parts.mark, ...s.alongStyle((m.value - min) / span), ...styles.mark }}
               data-active={inRange(m.value) ? "" : undefined}
             >
               {(m.label ?? (Array.isArray(marks) ? undefined : fmt(m.value))) !== undefined && (
-                <span className="rs-mark-label">{m.label ?? fmt(m.value)}</span>
+                <span className={cx("markLabel", "rs-mark-label")} style={{ ...NO_WRAP, ...styles.markLabel }}>
+                  {m.label ?? fmt(m.value)}
+                </span>
               )}
             </span>
           ))}
@@ -275,7 +349,7 @@ function SliderView({
           {values.map((v, i) => (
             <React.Fragment key={i}>
               {i > 0 && (
-                <span className="rs-value-sep" aria-hidden="true">
+                <span className={cx("separator", "rs-value-sep")} style={styles.separator} aria-hidden="true">
                   {count === 2 ? "–" : "·"}
                 </span>
               )}

@@ -16,7 +16,8 @@ A small, accessible, themeable **range slider** for React with one, two or more 
 - Value tooltips, tick marks (auto or custom labels)
 - Precise pointer handling: click the track to jump, thumbs can meet exactly, and overlapping thumbs separate in the direction you drag
 - Accessible: a native range input per thumb (screen readers, mobile swipe gestures, forms), full WAI-ARIA keyboard support, 24px targets, forced-colors and reduced-motion support
-- Style any inner part via `classNames` / `styles`, or build your own markup with the `useRangeSlider` hook
+- **Tailwind-ready**: utility classes on every part, an `unstyled` mode, and a cascade-layered stylesheet for Tailwind v4
+- Custom thumb and tooltip content (`renderThumb`, `renderTooltip`), or your own markup with the `useRangeSlider` hook
 
 ## Install
 
@@ -99,7 +100,10 @@ import { RangeSlider } from "react-multi-input-rangeslider";
 | `minAriaLabel` / `maxAriaLabel` | `string` | `"Minimum value"` / `"Maximum value"` | Accessible names of the two thumbs of a range. |
 | `getAriaLabel` | `(index: number) => string` | — | Accessible name of each thumb, by index. Takes precedence over the other labels. |
 | `className` / `style` | | | Applied to the root element. |
-| `classNames` / `styles` | `Partial<Record<Slot, …>>` | — | Per-part overrides. Slots: `root control track range thumb tooltip marks mark values value`. |
+| `classNames` / `styles` | `Partial<Record<Slot, …>>` | — | Per-part overrides. Slots: `root control track range thumb tooltip tooltipLabel marks mark markLabel values value separator`. |
+| `unstyled` | `boolean` | `false` | Leave out the built-in `rs-*` classes and style every part yourself (see [Tailwind CSS](#tailwind-css)). Layout still works: it's inline. |
+| `renderThumb` | `(thumb) => ReactNode` | — | Content inside each thumb. |
+| `renderTooltip` | `(thumb) => ReactNode` | — | Content of each tooltip label instead of the formatted value. |
 | `width` | `string` | `250px` | Slider width (sets `--rs-width`). |
 | `rangeColor` / `trackColor` | `string` | — | Shortcuts for `--rs-range-color` / `--rs-track-color`. |
 | `currencyText` | `string` | `"$"` | Prefix used when `formatValue` isn't set. |
@@ -138,7 +142,69 @@ Everything visual is a CSS variable. Override them on the slider, a wrapper, or 
 
 Dark mode: `theme="dark"`, or `theme="auto"` to follow `prefers-color-scheme`.
 
-State attributes you can style (or target with Tailwind's `data-*` variants): `.rs-thumb[data-active]` (last used, drawn on top), `[data-hover]`, `[data-dragging]`, `[data-focus-visible]`; `.rs-control[data-hover]` / `[data-dragging]`; `.rs-root[data-orientation]`, `[data-disabled]`.
+State attributes you can style (or target with Tailwind's `data-*` variants):
+
+| Part | Attributes |
+| --- | --- |
+| thumb | `data-index`, `data-active` (last used, drawn on top), `data-hover`, `data-dragging`, `data-focus-visible` |
+| tooltip | `data-visible` (shown: always, or on hover / drag / keyboard focus), `data-merged` (folded into a shared label) |
+| mark | `data-active` (inside the selected range) |
+| control | `data-hover`, `data-dragging` |
+| root | `data-orientation`, `data-disabled`, `data-tooltip` |
+
+Thumbs can be any size, set by `--rs-thumb-size` or by a class: the slider measures the rendered thumb, so positions and dragging always line up with it.
+
+## Tailwind CSS
+
+Pick how much of the default look you keep:
+
+**1. Default look, override parts with utilities (Tailwind v4).** Import the layered stylesheet after Tailwind. Its rules join Tailwind's `components` layer, so your utility classes win without `!`:
+
+```css
+/* app.css */
+@import "tailwindcss";
+@import "react-multi-input-rangeslider/style.layer.css";
+```
+
+```tsx
+<RangeSlider defaultValue={[20, 80]} classNames={{ range: "bg-pink-500", thumb: "size-8 border-pink-500" }} />
+```
+
+**2. Theme with the CSS variables**, e.g. `className="[--rs-range-color:var(--color-pink-500)] [--rs-thumb-size:2rem]"`.
+
+**3. Style everything yourself with `unstyled`.** No built-in classes and no stylesheet needed; the layout is inline. Use the data attributes above for states:
+
+```tsx
+<RangeSlider
+  unstyled
+  defaultValue={[20, 80]}
+  tooltip
+  classNames={{
+    control: "h-5",
+    track: "h-1.5 rounded-full bg-zinc-200",
+    range: "rounded-full bg-zinc-900",
+    thumb: "size-5 rounded-full border-2 border-zinc-900 bg-white shadow data-[dragging]:scale-110 data-[focus-visible]:ring-4",
+    tooltip: "opacity-0 transition-opacity data-[visible]:opacity-100",
+    tooltipLabel: "rounded bg-zinc-900 px-2 py-0.5 text-xs text-white",
+    values: "mt-3 flex justify-between text-sm",
+    separator: "hidden",
+  }}
+/>
+```
+
+Tailwind v3 has no native cascade layers: use `unstyled`, or the `!` modifier (`!bg-pink-500`) next to the regular `style.css`.
+
+### Custom thumbs and tooltips
+
+```tsx
+<RangeSlider
+  defaultValue={[200, 800]}
+  renderThumb={({ dragging }) => <GripIcon className={dragging ? "opacity-100" : "opacity-60"} />}
+  renderTooltip={({ formatted }) => <strong>{formatted}</strong>}
+/>
+```
+
+Both renderers get `{ index, value, formatted, active, hover, dragging, focusVisible, disabled }`.
 
 ## Keyboard
 
