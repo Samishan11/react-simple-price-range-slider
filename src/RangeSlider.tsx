@@ -52,6 +52,11 @@ export interface RangeSliderProps<V extends SliderValue = number[]> {
   /** Minimum distance between neighbouring thumbs. Default `0`: the thumbs can meet. */
   minGap?: number;
   /**
+   * Maximum distance between neighbouring thumbs: with `"block"` a thumb stops there, with `"push"` it
+   * pulls its neighbour along. Doesn't apply to `"swap"`.
+   */
+  maxGap?: number;
+  /**
    * When a thumb meets its neighbour: it stops (`"block"`, default), pushes the neighbour along
    * (`"push"`), or passes it (`"swap"`; `minGap` doesn't apply).
    */
@@ -178,6 +183,7 @@ function SliderView({
   step = 1,
   snapToMarks = false,
   minGap,
+  maxGap,
   collision,
   largeStep,
   disabled = false,
@@ -225,6 +231,7 @@ function SliderView({
     step,
     stops: snapToMarks && markList.length ? markList.map((m) => m.value) : undefined,
     minGap,
+    maxGap,
     collision,
     largeStep,
     disabled,

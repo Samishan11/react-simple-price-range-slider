@@ -345,6 +345,16 @@ describe("collisions, locks and read-only", () => {
     expect(values()).toEqual([21, 22]);
   });
 
+  it("maxGap: block stops a thumb at the maximum distance; push pulls the neighbour along", () => {
+    const { unmount } = render(<RangeSlider defaultValue={[20, 40]} maxGap={30} />);
+    key(1, "End");
+    expect(values()).toEqual([20, 50]);
+    unmount();
+    render(<RangeSlider defaultValue={[20, 40]} maxGap={30} collision="push" />);
+    key(1, "End");
+    expect(values()).toEqual([70, 100]);
+  });
+
   it("disabledThumbs locks a thumb: not focusable, and push stops at it", () => {
     const { container } = render(
       <RangeSlider defaultValue={[20, 50, 80]} collision="push" disabledThumbs={[false, true, false]} />

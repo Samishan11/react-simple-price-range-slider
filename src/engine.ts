@@ -133,21 +133,46 @@ export interface Bounds {
   step: number;
   /** Minimum distance kept between neighbouring thumbs. */
   gap: number;
+  /** Maximum distance allowed between neighbouring thumbs. Default: none. */
+  maxGap?: number;
 }
 
-/** Moves thumb `index` toward `target`, stopping at its neighbours (keeping `gap` between them). */
+/** The numbers whose decimals the results may carry (rounding away float noise beyond them). */
+const refsOf = (b: Bounds, values: readonly number[]) => [
+  b.step,
+  b.min,
+  b.max,
+  b.gap,
+  ...(b.maxGap !== undefined && Number.isFinite(b.maxGap) ? [b.maxGap] : []),
+  ...values,
+];
+
+/**
+ * Moves thumb `index` toward `target`, stopping at its neighbours: no closer than `gap`, and no
+ * further than `maxGap`.
+ */
 export function moveThumb(values: readonly number[], index: number, target: number, b: Bounds): number[] {
-  const refs = [b.step, b.min, b.max, b.gap, ...values];
-  const lo = index > 0 ? roundLike(values[index - 1] + b.gap, ...refs) : b.min;
-  const hi = index < values.length - 1 ? roundLike(values[index + 1] - b.gap, ...refs) : b.max;
-  const next = values.slice();
-  next[index] = clamp(target, lo, hi);
-  return next;
+  const refs = refsOf(b, values);
+  const far = b.maxGap ?? Infinity;
+  const prev = index > 0 ? values[index - 1] : undefined;
+  const next = index < values.length - 1 ? values[index + 1] : undefined;
+  const lo = Math.max(
+    prev === undefined ? b.min : roundLike(prev + b.gap, ...refs),
+    next === undefined || far === Infinity ? -Infinity : roundLike(next - far, ...refs)
+  );
+  const hi = Math.min(
+    next === undefined ? b.max : roundLike(next - b.gap, ...refs),
+    prev === undefined || far === Infinity ? Infinity : roundLike(prev + far, ...refs)
+  );
+  const moved = values.slice();
+  moved[index] = clamp(target, lo, hi);
+  return moved;
 }
 
 /**
- * Moves thumb `index` toward `target`, pushing the neighbours it runs into (keeping `gap`), as
- * far as the ends of the slider and any `locked` (disabled) thumbs allow.
+ * Moves thumb `index` toward `target`, pushing the neighbours it runs into (keeping `gap`) and
+ * pulling the ones it leaves behind (keeping within `maxGap`), as far as the ends of the slider
+ * and any `locked` (disabled) thumbs allow.
  */
 export function pushThumb(
   values: readonly number[],
@@ -157,23 +182,36 @@ export function pushThumb(
   locked: readonly boolean[] = []
 ): number[] {
   const n = values.length;
-  const refs = [b.step, b.min, b.max, b.gap, ...values];
-  // How far the thumb can go before the chain it pushes reaches an end or a locked thumb.
+  const refs = refsOf(b, values);
+  const far = b.maxGap ?? Infinity;
+  // How far the thumb can go before the chain it pushes or pulls reaches an end or a locked thumb.
   let hi = b.max - (n - 1 - index) * b.gap;
-  for (let j = index + 1; j < n; j++) if (locked[j]) { hi = values[j] - (j - index) * b.gap; break; }
   let lo = b.min + index * b.gap;
-  for (let j = index - 1; j >= 0; j--) if (locked[j]) { lo = values[j] + (index - j) * b.gap; break; }
-  const next = values.slice();
-  next[index] = roundLike(clamp(target, lo, hi), ...refs);
-  for (let j = index + 1; j < n; j++) next[j] = Math.max(next[j], roundLike(next[j - 1] + b.gap, ...refs));
-  for (let j = index - 1; j >= 0; j--) next[j] = Math.min(next[j], roundLike(next[j + 1] - b.gap, ...refs));
-  return next;
+  for (let j = index + 1; j < n; j++) {
+    if (!locked[j]) continue;
+    hi = Math.min(hi, values[j] - (j - index) * b.gap); // pushing up into it
+    lo = Math.max(lo, values[j] - (j - index) * far); // pulling it down
+    break;
+  }
+  for (let j = index - 1; j >= 0; j--) {
+    if (!locked[j]) continue;
+    lo = Math.max(lo, values[j] + (index - j) * b.gap); // pushing down into it
+    hi = Math.min(hi, values[j] + (index - j) * far); // pulling it up
+    break;
+  }
+  const moved = values.slice();
+  moved[index] = roundLike(clamp(target, lo, hi), ...refs);
+  for (let j = index + 1; j < n; j++)
+    moved[j] = clamp(moved[j], roundLike(moved[j - 1] + b.gap, ...refs), roundLike(moved[j - 1] + far, ...refs));
+  for (let j = index - 1; j >= 0; j--)
+    moved[j] = clamp(moved[j], roundLike(moved[j + 1] - far, ...refs), roundLike(moved[j + 1] - b.gap, ...refs));
+  return moved;
 }
 
 /**
  * Moves thumb `index` to `target`, letting it pass its neighbours (the values re-sort, so the
- * thumb may get a new index, which is returned). Locked thumbs still can't be passed. `minGap`
- * doesn't apply: passing means meeting.
+ * thumb may get a new index, which is returned). Locked thumbs still can't be passed. `gap` and
+ * `maxGap` don't apply: passing means meeting, and neighbours change.
  */
 export function swapThumb(
   values: readonly number[],
