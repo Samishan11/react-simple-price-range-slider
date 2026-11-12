@@ -1,10 +1,18 @@
 import React, { useState } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import MultiRangeSlider, { RangeValues } from "../src";
+import MultiRangeSlider, { RangeSlider, RangeValues } from "../src";
 
 const sliders = () => screen.getAllByRole("slider") as HTMLInputElement[];
+const values = () => sliders().map((s) => Number(s.value));
+/** A value set directly on a thumb's input, as assistive technology or autofill does. */
 const change = (i: number, v: number) =>
   fireEvent.change(sliders()[i], { target: { value: String(v) } });
+const key = (i: number, k: string, init: { shiftKey?: boolean } = {}) => {
+  fireEvent.keyDown(sliders()[i], { key: k, ...init });
+  fireEvent.keyUp(sliders()[i], { key: k, ...init });
+};
+const input = (thumb: number) => ({ thumb, source: "input" });
+const keyboard = (thumb: number) => ({ thumb, source: "keyboard" });
 
 describe("rendering & legacy props", () => {
   it("renders two sliders with default values and $ prefix", () => {
@@ -39,16 +47,16 @@ describe("rendering & legacy props", () => {
 });
 
 describe("uncontrolled", () => {
-  it("uses defaultValue and calls onChange", () => {
+  it("uses defaultValue and calls onChange with the value and what moved it", () => {
     const onChange = vi.fn();
     render(<MultiRangeSlider min={0} max={100} defaultValue={{ min: 10, max: 90 }} onChange={onChange} />);
     expect(sliders()[0].value).toBe("10");
     change(0, 20);
-    expect(onChange).toHaveBeenLastCalledWith({ min: 20, max: 90 });
+    expect(onChange).toHaveBeenLastCalledWith({ min: 20, max: 90 }, input(0));
     expect(sliders()[0].value).toBe("20");
   });
 
-  it("does not call onChange on mount or for no-op changes", () => {
+  it("does not call onChange on mount", () => {
     const onChange = vi.fn();
     render(<MultiRangeSlider min={0} max={100} onChange={onChange} />);
     expect(onChange).not.toHaveBeenCalled();
@@ -58,17 +66,16 @@ describe("uncontrolled", () => {
     const onChange = vi.fn();
     render(<MultiRangeSlider min={0} max={100} minGap={10} onChange={onChange} />);
     change(0, 100);
-    expect(onChange).toHaveBeenLastCalledWith({ min: 90, max: 100 });
+    expect(onChange).toHaveBeenLastCalledWith({ min: 90, max: 100 }, input(0));
     change(1, 0);
-    expect(onChange).toHaveBeenLastCalledWith({ min: 90, max: 100 });
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 
   it("gap defaults to 0, so the thumbs can meet (but never cross)", () => {
     const onChange = vi.fn();
     render(<MultiRangeSlider min={0} max={100} step={5} defaultValue={{ min: 20, max: 60 }} onChange={onChange} />);
-    expect(sliders()[0]).toHaveAttribute("step", "5");
     change(0, 100);
-    expect(onChange).toHaveBeenLastCalledWith({ min: 60, max: 60 });
+    expect(onChange).toHaveBeenLastCalledWith({ min: 60, max: 60 }, input(0));
     change(1, 0);
     expect(onChange).toHaveBeenCalledTimes(1);
   });
@@ -77,7 +84,7 @@ describe("uncontrolled", () => {
     const onChange = vi.fn();
     render(<MultiRangeSlider min={0} max={1} step={0.1} minGap={0.1} defaultValue={{ min: 0.2, max: 0.4 }} onChange={onChange} />);
     change(0, 0.9); // lower thumb runs into the upper one: 0.4 - 0.1
-    expect(onChange).toHaveBeenLastCalledWith({ min: 0.3, max: 0.4 });
+    expect(onChange).toHaveBeenLastCalledWith({ min: 0.3, max: 0.4 }, input(0));
     expect(screen.getByText("$0.3")).toBeInTheDocument();
     change(1, 0); // upper thumb runs into the lower one: 0.3 + 0.1 is 0.4 again
     expect(onChange).toHaveBeenCalledTimes(1);
@@ -89,7 +96,7 @@ describe("controlled", () => {
     const onChange = vi.fn();
     render(<MultiRangeSlider min={0} max={100} value={{ min: 10, max: 50 }} onChange={onChange} />);
     change(0, 30);
-    expect(onChange).toHaveBeenCalledWith({ min: 30, max: 50 });
+    expect(onChange).toHaveBeenCalledWith({ min: 30, max: 50 }, input(0));
     expect(sliders()[0].value).toBe("10");
   });
 
@@ -107,16 +114,127 @@ describe("controlled", () => {
     change(0, 40);
     expect(sliders()[0].value).toBe("40");
     fireEvent.click(screen.getByText("reset"));
-    expect(sliders()[0].value).toBe("25");
-    expect(sliders()[1].value).toBe("75");
+    expect(values()).toEqual([25, 75]);
   });
 
   it("clamps out-of-range values and follows min/max prop changes", () => {
     const { rerender } = render(<MultiRangeSlider min={0} max={100} value={{ min: -50, max: 500 }} />);
-    expect(sliders()[0].value).toBe("0");
-    expect(sliders()[1].value).toBe("100");
+    expect(values()).toEqual([0, 100]);
     rerender(<MultiRangeSlider min={0} max={50} value={{ min: 10, max: 100 }} />);
-    expect(sliders()[1].value).toBe("50");
+    expect(values()).toEqual([10, 50]);
+  });
+});
+
+describe("value shapes", () => {
+  it("a number makes a single thumb, and onChange reports a number", () => {
+    const onChange = vi.fn();
+    render(<RangeSlider defaultValue={30} onChange={onChange} ariaLabel="Volume" />);
+    expect(sliders()).toHaveLength(1);
+    expect(screen.getByRole("slider", { name: "Volume" })).toHaveValue("30");
+    expect(screen.queryByRole("group")).toBeNull();
+    key(0, "ArrowRight");
+    expect(onChange).toHaveBeenLastCalledWith(31, keyboard(0));
+  });
+
+  it("an array gives one thumb per entry, and onChange reports an array", () => {
+    const onChange = vi.fn();
+    render(<RangeSlider defaultValue={[10, 40, 70]} onChange={onChange} />);
+    expect(sliders().map((s) => s.getAttribute("aria-label"))).toEqual(["Value 1 of 3", "Value 2 of 3", "Value 3 of 3"]);
+    key(1, "End"); // the middle thumb stops at its upper neighbour
+    expect(onChange).toHaveBeenLastCalledWith([10, 70, 70], keyboard(1));
+  });
+
+  it("without a value, RangeSlider reports arrays and MultiRangeSlider keeps { min, max }", () => {
+    const a = vi.fn();
+    const b = vi.fn();
+    render(
+      <>
+        <RangeSlider onChange={a} />
+        <MultiRangeSlider onChange={b} />
+      </>
+    );
+    key(0, "ArrowRight");
+    key(2, "ArrowRight");
+    expect(a).toHaveBeenLastCalledWith([1, 100], keyboard(0));
+    expect(b).toHaveBeenLastCalledWith({ min: 1, max: 100 }, keyboard(0));
+  });
+
+  it("names form fields by thumb count", () => {
+    const { unmount } = render(<RangeSlider defaultValue={5} name="qty" />);
+    expect(sliders()[0]).toHaveAttribute("name", "qty");
+    unmount();
+    render(<MultiRangeSlider min={0} max={100} name="price" />);
+    expect(sliders().map((s) => s.getAttribute("name"))).toEqual(["price-min", "price-max"]);
+  });
+});
+
+describe("keyboard", () => {
+  it("arrows step; Shift+arrows and PageUp/PageDown take ~10%; Home/End go to the limits", () => {
+    render(<RangeSlider defaultValue={50} />);
+    key(0, "ArrowUp");
+    expect(values()).toEqual([51]);
+    key(0, "ArrowLeft");
+    expect(values()).toEqual([50]);
+    key(0, "ArrowRight", { shiftKey: true });
+    expect(values()).toEqual([60]);
+    key(0, "PageDown");
+    expect(values()).toEqual([50]);
+    key(0, "End");
+    expect(values()).toEqual([100]);
+    key(0, "Home");
+    expect(values()).toEqual([0]);
+  });
+
+  it("follows largeStep", () => {
+    render(<RangeSlider defaultValue={50} largeStep={25} />);
+    key(0, "PageUp");
+    expect(values()).toEqual([75]);
+  });
+
+  it("flips Left/Right in RTL and on inverted sliders", () => {
+    const { unmount } = render(<RangeSlider defaultValue={50} dir="rtl" />);
+    key(0, "ArrowLeft");
+    expect(values()).toEqual([51]);
+    unmount();
+    render(<RangeSlider defaultValue={50} inverted />);
+    key(0, "ArrowRight");
+    expect(values()).toEqual([49]);
+  });
+
+  it("reaches an off-grid max and steps back onto the grid", () => {
+    render(<RangeSlider defaultValue={90} max={100} step={30} />);
+    key(0, "ArrowRight");
+    expect(values()).toEqual([100]);
+    key(0, "ArrowLeft");
+    expect(values()).toEqual([90]);
+  });
+
+  it("fires onChangeEnd when a key is released", () => {
+    const onChangeEnd = vi.fn();
+    render(<MultiRangeSlider min={0} max={100} onChangeEnd={onChangeEnd} />);
+    fireEvent.keyDown(sliders()[0], { key: "ArrowRight" });
+    expect(onChangeEnd).not.toHaveBeenCalled();
+    fireEvent.keyUp(sliders()[0], { key: "ArrowRight" });
+    expect(onChangeEnd).toHaveBeenLastCalledWith({ min: 1, max: 100 }, keyboard(0));
+    fireEvent.keyUp(sliders()[1], { key: "Tab" });
+    expect(onChangeEnd).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("assistive technology", () => {
+  it("a small nudge on the input moves at least one stop", () => {
+    render(<RangeSlider defaultValue={50} step={50} />);
+    change(0, 51);
+    expect(values()).toEqual([100]);
+    change(0, 99);
+    expect(values()).toEqual([50]);
+  });
+
+  it("fires onChangeEnd when the input's value is committed", () => {
+    const onChangeEnd = vi.fn();
+    render(<MultiRangeSlider min={0} max={100} onChangeEnd={onChangeEnd} />);
+    change(1, 70);
+    expect(onChangeEnd).toHaveBeenLastCalledWith({ min: 0, max: 70 }, input(1));
   });
 });
 
@@ -127,25 +245,7 @@ describe("misc", () => {
     expect(container.firstElementChild).toHaveAttribute("data-disabled");
   });
 
-  it("names inputs for forms", () => {
-    render(<MultiRangeSlider min={0} max={100} name="price" />);
-    expect(sliders()[0]).toHaveAttribute("name", "price-min");
-    expect(sliders()[1]).toHaveAttribute("name", "price-max");
-  });
-
   // Pointer drags need real layout, so they're covered in e2e/interaction.spec.ts.
-  it("fires onChangeEnd when a keyboard adjustment ends", () => {
-    const onChangeEnd = vi.fn();
-    render(<MultiRangeSlider min={0} max={100} onChangeEnd={onChangeEnd} />);
-    change(0, 20);
-    fireEvent.keyUp(sliders()[0], { key: "ArrowRight" });
-    expect(onChangeEnd).toHaveBeenLastCalledWith({ min: 20, max: 100 });
-    fireEvent.keyUp(sliders()[1], { key: "Tab" });
-    expect(onChangeEnd).toHaveBeenCalledTimes(1);
-    fireEvent.keyUp(sliders()[1], { key: "ArrowLeft" });
-    expect(onChangeEnd).toHaveBeenCalledTimes(2);
-  });
-
   it("ignores pointer presses before the slider is laid out", () => {
     const onChange = vi.fn();
     const { container } = render(<MultiRangeSlider min={0} max={100} onChange={onChange} />);
@@ -155,23 +255,23 @@ describe("misc", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it("puts the min thumb on top when both thumbs sit at the max end", () => {
-    render(<MultiRangeSlider min={0} max={100} defaultValue={{ min: 100, max: 100 }} />);
-    expect(sliders()[0].style.zIndex).toBe("4");
-    expect(sliders()[1].style.zIndex).toBe("3");
+  it("draws the last-used thumb on top", () => {
+    const { container } = render(<MultiRangeSlider min={0} max={100} defaultValue={{ min: 50, max: 50 }} />);
+    const thumbs = container.querySelectorAll(".rs-thumb");
+    expect(thumbs[1]).toHaveAttribute("data-active");
+    fireEvent.focus(sliders()[0]);
+    expect(thumbs[0]).toHaveAttribute("data-active");
+    expect(thumbs[1]).not.toHaveAttribute("data-active");
   });
 
-  it("exposes exact fill position without rounding", () => {
-    const { container } = render(
-      <MultiRangeSlider min={0} max={3} value={{ min: 1, max: 2 }} />
-    );
-    const root = container.firstElementChild as HTMLElement;
-    expect(parseFloat(root.style.getPropertyValue("--rs-left"))).toBeCloseTo(33.333, 2);
-    expect(parseFloat(root.style.getPropertyValue("--rs-right"))).toBeCloseTo(33.333, 2);
+  it("marks vertical sliders for assistive technology", () => {
+    const { container } = render(<RangeSlider defaultValue={[20, 80]} orientation="vertical" />);
+    expect(container.firstElementChild).toHaveAttribute("data-orientation", "vertical");
+    sliders().forEach((s) => expect(s).toHaveAttribute("aria-orientation", "vertical"));
   });
 });
 
-describe("phase 3 features", () => {
+describe("theme, tooltips, marks, slots", () => {
   it("applies theme and dir attributes", () => {
     const { container } = render(<MultiRangeSlider min={0} max={10} theme="dark" dir="rtl" />);
     const root = container.firstElementChild!;
@@ -198,6 +298,12 @@ describe("phase 3 features", () => {
     expect(Array.from(marks).map((m) => m.hasAttribute("data-active"))).toEqual([false, true, true, true, false]);
   });
 
+  it("a single thumb lights the marks up to its value", () => {
+    const { container } = render(<RangeSlider defaultValue={50} marks={4} />);
+    const marks = container.querySelectorAll(".rs-mark");
+    expect(Array.from(marks).map((m) => m.hasAttribute("data-active"))).toEqual([true, true, true, false, false]);
+  });
+
   it("renders custom marks with labels", () => {
     render(<MultiRangeSlider min={0} max={100} marks={[{ value: 0, label: "Low" }, { value: 100, label: "High" }, { value: 500, label: "Gone" }]} />);
     expect(screen.getByText("Low")).toBeInTheDocument();
@@ -221,6 +327,11 @@ describe("accessibility", () => {
     expect(screen.getByRole("group", { name: "Price range" })).toBeInTheDocument();
     expect(screen.getByRole("slider", { name: "Min price" })).toHaveAttribute("aria-valuetext", "$0");
     expect(screen.getByRole("slider", { name: "Max price" })).toHaveAttribute("aria-valuetext", "$100");
+  });
+
+  it("getAriaLabel names each thumb", () => {
+    render(<RangeSlider defaultValue={[1, 2, 3]} getAriaLabel={(i) => `Stop ${i + 1}`} />);
+    expect(screen.getByRole("slider", { name: "Stop 3" })).toBeInTheDocument();
   });
 
   it("hides decorative parts from assistive tech", () => {

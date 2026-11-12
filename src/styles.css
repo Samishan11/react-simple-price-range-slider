@@ -1,15 +1,19 @@
 /*
  * Theming: override any of these CSS variables on .rs-root (or an ancestor).
  *
- *   --rs-width, --rs-track-color, --rs-range-color, --rs-track-height,
- *   --rs-thumb-size, --rs-thumb-color, --rs-thumb-border-color,
- *   --rs-thumb-border-width, --rs-focus-ring, --rs-value-color, --rs-font-size,
- *   --rs-tooltip-bg, --rs-tooltip-color, --rs-mark-color
+ *   --rs-width, --rs-height (vertical length), --rs-track-color, --rs-range-color,
+ *   --rs-track-height, --rs-thumb-size, --rs-thumb-color, --rs-thumb-border-color,
+ *   --rs-thumb-border-width, --rs-thumb-shadow, --rs-focus-ring, --rs-value-color,
+ *   --rs-font-size, --rs-tooltip-bg, --rs-tooltip-color, --rs-tooltip-font-size,
+ *   --rs-tooltip-offset, --rs-mark-color
  *
  * Themes: data-theme="dark" (or "auto" to follow the OS) re-maps the colours.
+ * Positions (thumbs, fill, tooltips, marks) are inline styles set by the component;
+ * this file only paints and sizes.
  */
 .rs-root {
   --rs-width: 250px;
+  --rs-height: 200px;
   --rs-track-color: #e2e8f0;
   --rs-range-color: #2563eb;
   --rs-track-height: 6px;
@@ -17,11 +21,14 @@
   --rs-thumb-color: #fff;
   --rs-thumb-border-color: var(--rs-range-color);
   --rs-thumb-border-width: 2px;
-  --rs-focus-ring: 0 0 0 4px color-mix(in srgb, var(--rs-range-color) 28%, transparent);
+  --rs-thumb-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  --rs-focus-ring: 0 0 0 4px rgb(37 99 235 / 0.28);
   --rs-value-color: #334155;
   --rs-font-size: 0.875rem;
   --rs-tooltip-bg: #0f172a;
   --rs-tooltip-color: #fff;
+  --rs-tooltip-font-size: 0.75rem;
+  --rs-tooltip-offset: 8px;
   --rs-mark-color: #64748b;
 
   box-sizing: border-box;
@@ -30,18 +37,21 @@
   font-size: var(--rs-font-size);
   color: var(--rs-value-color);
 }
+@supports (color: color-mix(in srgb, red, blue)) {
+  .rs-root {
+    --rs-focus-ring: 0 0 0 4px color-mix(in srgb, var(--rs-range-color) 28%, transparent);
+  }
+}
 .rs-root *,
 .rs-root *::before,
 .rs-root *::after {
   box-sizing: border-box;
 }
 
-/* The control receives every pointer press (thumbs and track); see RangeSlider.tsx. */
+/* The control receives every pointer press (thumbs and track). */
 .rs-control {
-  position: relative;
   height: var(--rs-thumb-size);
   cursor: pointer;
-  touch-action: pan-y; /* horizontal drags move a thumb, vertical swipes still scroll the page */
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -49,92 +59,31 @@
 .rs-control[data-hover] { cursor: grab; }
 .rs-control[data-dragging] { cursor: grabbing; }
 
-/* The rail is inset by half a thumb so the fill lines up with thumb centres. */
-.rs-rail {
-  position: absolute;
-  inset-inline: calc(var(--rs-thumb-size) / 2);
-  top: 50%;
-  height: var(--rs-track-height);
-  transform: translateY(-50%);
-}
-.rs-track,
-.rs-range {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  border-radius: 999px;
-}
+/* The track spans the thumbs' travel (inset by half a thumb), so the fill meets thumb centres. */
 .rs-track {
-  inset-inline: 0;
+  height: var(--rs-track-height);
+  border-radius: 999px;
   background: var(--rs-track-color);
 }
 .rs-range {
-  inset-inline-start: var(--rs-left);
-  inset-inline-end: var(--rs-right);
+  border-radius: 999px;
   background: var(--rs-range-color);
 }
 
 .rs-thumb {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  outline: none;
-  pointer-events: none; /* the inputs draw the thumbs and handle keyboard/AT; the control handles the pointer */
-  -webkit-appearance: none;
-  appearance: none;
-  -webkit-tap-highlight-color: transparent;
-}
-.rs-thumb::-webkit-slider-runnable-track {
-  height: var(--rs-thumb-size);
-  background: transparent;
-  border: 0;
-}
-.rs-thumb::-moz-range-track {
-  height: var(--rs-thumb-size);
-  background: transparent;
-  border: 0;
-}
-
-/* border-box everywhere: Firefox defaults to content-box, which made its thumbs 4px larger
-   than --rs-thumb-size and pulled them up to 2px off the fill. */
-.rs-thumb::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  box-sizing: border-box;
+  z-index: 2;
   width: var(--rs-thumb-size);
   height: var(--rs-thumb-size);
   border-radius: 50%;
   background: var(--rs-thumb-color);
   border: var(--rs-thumb-border-width) solid var(--rs-thumb-border-color);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+  box-shadow: var(--rs-thumb-shadow);
   transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
-.rs-thumb::-moz-range-thumb {
-  box-sizing: border-box;
-  width: var(--rs-thumb-size);
-  height: var(--rs-thumb-size);
-  border-radius: 50%;
-  background: var(--rs-thumb-color);
-  border: var(--rs-thumb-border-width) solid var(--rs-thumb-border-color);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-}
-
-/* Thumbs don't receive the pointer themselves, so hover/drag states come as data attributes. */
-.rs-thumb[data-hover]::-webkit-slider-thumb { transform: scale(1.1); }
-.rs-thumb[data-hover]::-moz-range-thumb { transform: scale(1.1); }
-.rs-thumb[data-dragging]::-webkit-slider-thumb { transform: scale(1.18); }
-.rs-thumb[data-dragging]::-moz-range-thumb { transform: scale(1.18); }
-.rs-thumb:focus-visible::-webkit-slider-thumb {
-  box-shadow: var(--rs-focus-ring), 0 1px 3px rgb(0 0 0 / 0.25);
-}
-.rs-thumb:focus-visible::-moz-range-thumb {
-  box-shadow: var(--rs-focus-ring), 0 1px 3px rgb(0 0 0 / 0.25);
-}
+.rs-thumb[data-active] { z-index: 3; }
+.rs-thumb[data-hover] { transform: scale(1.1); }
+.rs-thumb[data-dragging] { transform: scale(1.18); }
+.rs-thumb[data-focus-visible] { box-shadow: var(--rs-focus-ring), var(--rs-thumb-shadow); }
 
 .rs-root[data-disabled] { opacity: 0.5; }
 .rs-root[data-disabled] .rs-control { cursor: not-allowed; }
@@ -149,55 +98,48 @@
   font-weight: 500;
 }
 
-/* One rule per vendor pseudo-element: browsers drop a whole selector list that contains
-   one they don't know (Chrome and Safari ignored this block entirely before 2.1.0). */
-@media (prefers-reduced-motion: reduce) {
-  .rs-thumb::-webkit-slider-thumb { transition: none; }
-  .rs-thumb::-moz-range-thumb { transition: none; }
-  .rs-tooltip { transition: none; }
-}
-
 /* ---- tooltip ---- */
+/* .rs-tooltip is a zero-width anchor at the thumb centre; the label centres on it. */
 .rs-tooltip {
   position: absolute;
   z-index: 6;
-  bottom: calc(100% + 8px);
-  inset-inline-start: calc(var(--rs-thumb-size) / 2 + (100% - var(--rs-thumb-size)) * var(--p) / 100);
-  transform: translateX(-50%) translateY(4px);
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: var(--rs-tooltip-bg);
-  color: var(--rs-tooltip-color);
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1.4;
-  white-space: nowrap;
+  bottom: calc(100% + var(--rs-tooltip-offset));
+  width: 0;
+  display: flex;
+  justify-content: center;
   pointer-events: none;
   opacity: 0;
+  transform: translateY(4px);
   transition: opacity 0.12s ease, transform 0.12s ease;
 }
-.rs-root[dir="rtl"] .rs-tooltip { transform: translateX(50%) translateY(4px); }
 .rs-tooltip::after {
   content: "";
   position: absolute;
   top: 100%;
-  left: 50%;
-  margin-left: -4px;
+  left: -4px;
   border: 4px solid transparent;
   border-top-color: var(--rs-tooltip-bg);
+}
+.rs-tooltip-label {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--rs-tooltip-bg);
+  color: var(--rs-tooltip-color);
+  font-size: var(--rs-tooltip-font-size);
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 .rs-tooltip[data-show="always"],
 .rs-thumb[data-hover] + .rs-tooltip,
 .rs-thumb[data-dragging] + .rs-tooltip,
-.rs-thumb:focus-visible + .rs-tooltip {
+.rs-thumb[data-focus-visible] + .rs-tooltip {
   opacity: 1;
-  transform: translateX(-50%);
+  transform: none;
 }
-.rs-root[dir="rtl"] .rs-tooltip[data-show="always"],
-.rs-root[dir="rtl"] .rs-thumb[data-hover] + .rs-tooltip,
-.rs-root[dir="rtl"] .rs-thumb[data-dragging] + .rs-tooltip,
-.rs-root[dir="rtl"] .rs-thumb:focus-visible + .rs-tooltip {
-  transform: translateX(50%);
+/* Always-on tooltips get room above the slider instead of covering what's there. */
+.rs-root[data-tooltip="always"]:not([data-orientation="vertical"]) {
+  padding-top: calc(var(--rs-tooltip-font-size) * 1.4 + 6px + var(--rs-tooltip-offset));
 }
 
 /* ---- marks ---- */
@@ -209,8 +151,9 @@
 .rs-mark {
   position: absolute;
   top: 0;
-  inset-inline-start: calc(var(--rs-thumb-size) / 2 + (100% - var(--rs-thumb-size)) * var(--p) / 100);
   width: 0;
+  display: flex;
+  justify-content: center;
   color: var(--rs-mark-color);
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
@@ -227,11 +170,77 @@
 }
 .rs-mark[data-active] { color: var(--rs-range-color); }
 .rs-mark-label {
-  position: absolute;
-  top: 10px;
-  left: 0;
-  transform: translateX(-50%);
+  margin-top: 10px;
   white-space: nowrap;
+}
+
+/* ---- vertical ---- */
+.rs-root[data-orientation="vertical"] {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  grid-template-areas: "control marks" "values values";
+  align-items: start;
+  column-gap: 8px;
+  width: auto;
+}
+.rs-root[data-orientation="vertical"] .rs-control {
+  grid-area: control;
+  width: var(--rs-thumb-size);
+  height: var(--rs-height);
+}
+.rs-root[data-orientation="vertical"] .rs-track {
+  width: var(--rs-track-height);
+  height: auto;
+}
+.rs-root[data-orientation="vertical"] .rs-tooltip {
+  bottom: auto;
+  inset-inline-start: calc(100% + var(--rs-tooltip-offset));
+  width: auto;
+  height: 0;
+  align-items: center;
+  transform: translateX(-4px);
+}
+.rs-root[data-orientation="vertical"] .rs-tooltip::after {
+  top: -4px;
+  left: auto;
+  inset-inline-end: 100%;
+  border-top-color: transparent;
+  border-inline-end-color: var(--rs-tooltip-bg);
+}
+.rs-root[data-orientation="vertical"] .rs-tooltip[data-show="always"],
+.rs-root[data-orientation="vertical"] .rs-thumb[data-hover] + .rs-tooltip,
+.rs-root[data-orientation="vertical"] .rs-thumb[data-dragging] + .rs-tooltip,
+.rs-root[data-orientation="vertical"] .rs-thumb[data-focus-visible] + .rs-tooltip {
+  transform: none;
+}
+.rs-root[data-orientation="vertical"] .rs-marks {
+  grid-area: marks;
+  height: var(--rs-height);
+  min-width: 2.5em;
+  margin: 0;
+}
+.rs-root[data-orientation="vertical"] .rs-mark {
+  top: auto;
+  left: 0;
+  width: auto;
+  height: 0;
+  align-items: center;
+  justify-content: flex-start;
+}
+.rs-root[data-orientation="vertical"] .rs-mark::before {
+  top: -1px;
+  width: 6px;
+  height: 2px;
+}
+.rs-root[data-orientation="vertical"] .rs-mark-label { margin: 0 0 0 10px; }
+.rs-root[data-orientation="vertical"] .rs-values {
+  grid-area: values;
+  justify-content: flex-start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rs-thumb { transition: none; }
+  .rs-tooltip { transition: none; }
 }
 
 /* ---- themes ---- */
@@ -260,9 +269,7 @@
 @media (forced-colors: active) {
   .rs-track { background: GrayText; }
   .rs-range { background: Highlight; }
-  .rs-thumb::-webkit-slider-thumb { background: Canvas; border-color: Highlight; }
-  .rs-thumb::-moz-range-thumb { background: Canvas; border-color: Highlight; }
-  .rs-thumb:focus-visible::-webkit-slider-thumb { outline: 2px solid CanvasText; outline-offset: 2px; }
-  .rs-thumb:focus-visible::-moz-range-thumb { outline: 2px solid CanvasText; outline-offset: 2px; }
-  .rs-tooltip { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
+  .rs-thumb { background: Canvas; border-color: Highlight; }
+  .rs-thumb[data-focus-visible] { outline: 2px solid CanvasText; outline-offset: 2px; }
+  .rs-tooltip-label { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
 }
