@@ -24,8 +24,11 @@ A small, accessible, themeable **range slider** for React with one, two or more 
 ## Install
 
 ```sh
-npm install react-multi-input-rangeslider
+npm install react-multi-input-rangeslider@next   # 3.0 release candidate (this README)
+npm install react-multi-input-rangeslider        # 2.x, the current stable release
 ```
+
+This README documents 3.0. For 2.x, see [its README](https://github.com/Samishan11/react-simple-price-range-slider/blob/340fce7/README.md). 3.0 accepts every 2.x prop ([migration notes](#migrating-from-2x-to-30)).
 
 ## Usage
 
@@ -306,7 +309,8 @@ function MySlider() {
 
 - **Thumbs are real elements.** `.rs-thumb` is now the visible thumb (a `div`) instead of a native `<input type="range">` drawn through `::-webkit-slider-thumb` / `::-moz-range-thumb`. Each thumb contains a visually hidden `.rs-input`, which is still the focusable `role="slider"`, carries the form value and supports screen readers. Move custom thumb CSS from the pseudo-elements to `.rs-thumb`, and `:focus-visible` styles to `.rs-thumb[data-focus-visible]`.
 - **`.rs-rail` is gone**: `.rs-range` (the fill) now sits inside `.rs-track`. Positions are inline styles, and the root no longer sets `--rs-left` / `--rs-right`.
-- **Tooltips** are `.rs-tooltip` (a zero-width anchor at the thumb centre) around `.rs-tooltip-label` (the bubble). Move bubble styles to `.rs-tooltip-label`.
+- **Tooltips** are `.rs-tooltip` (a zero-width anchor at the thumb centre) around `.rs-tooltip-label` (the bubble), shown by `.rs-tooltip[data-visible]`. Move bubble styles to `.rs-tooltip-label`, and show/hide rules that used sibling selectors (like `.rs-thumb[data-hover] + .rs-tooltip`) to `.rs-tooltip[data-visible]`.
+- **`RangeSlider` and `MultiRangeSlider` are `forwardRef` components** (objects, not functions). Render them as JSX as usual; only code that called them as plain functions breaks.
 - **`min` / `max` are optional** (0 / 100), and the callbacks get a second argument, `{ thumb, source }`.
 - **`onChangeEnd` also fires for assistive technology** (e.g. a VoiceOver swipe), which previously never ended an adjustment.
 

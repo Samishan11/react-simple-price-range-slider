@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased (3.0.0)
+## 3.0.0-rc.0
+
+Release candidate for 3.0, on the `next` tag: `npm install react-multi-input-rangeslider@next`. Every 2.x prop still works; see [Migrating from 2.x to 3.0](README.md#migrating-from-2x-to-30) if you wrote CSS against the markup.
 
 ### Added
 - **Any number of thumbs.** `value` / `defaultValue` take a number (one thumb), an array (one thumb per entry) or `{ min, max }`, and `onChange` / `onChangeEnd` report the same shape. New named export `RangeSlider`; `MultiRangeSlider` stays the default export.
