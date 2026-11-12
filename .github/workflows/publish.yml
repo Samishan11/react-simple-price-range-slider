@@ -1,0 +1,80 @@
+name: Publish
+# Publishes to npm when a GitHub release is published, with npm trusted publishing: npm verifies
+# this workflow through GitHub's OIDC token, so no npm token is stored anywhere, and it adds a
+# provenance attestation. A pre-release goes to the `next` dist-tag, a release to `latest`.
+#
+# Dry run (checks and pack, nothing uploaded): run it from the Actions tab, and it runs on pull
+# requests that change this file.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+  pull_request:
+    paths: [.github/workflows/publish.yml]
+permissions:
+  contents: read
+jobs:
+  dry-run:
+    name: dry run
+    if: github.event_name != 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: npm }
+      - name: npm supports trusted publishing (11.5.1 or later)
+        run: |
+          node -e 'const v = process.argv[1].split(".").map(Number); console.log("npm " + process.argv[1]); process.exit(v[0] > 11 || (v[0] === 11 && (v[1] > 5 || (v[1] === 5 && v[2] >= 1))) ? 0 : 1)' "$(npm --version)"
+      - run: npm ci
+      # The checks run as their own step, not inside `npm publish --dry-run`: there, npm passes its
+      # dry-run flag to the `npm pack` that the package check (attw --pack) starts, so no tarball
+      # is written and the check fails.
+      - name: Publish checks (typecheck, unit tests, build, package checks)
+        run: npm run prepublishOnly
+      - run: npm publish --dry-run --ignore-scripts --tag next
+
+  publish:
+    name: publish to npm
+    if: github.event_name == 'release' && github.repository == 'Samishan11/react-simple-price-range-slider'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # lets npm verify this workflow (trusted publishing) and sign the provenance
+    concurrency:
+      group: publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: npm supports trusted publishing (11.5.1 or later)
+        run: |
+          node -e 'const v = process.argv[1].split(".").map(Number); console.log("npm " + process.argv[1]); process.exit(v[0] > 11 || (v[0] === 11 && (v[1] > 5 || (v[1] === 5 && v[2] >= 1))) ? 0 : 1)' "$(npm --version)"
+      - name: Check the release matches package.json, and pick the dist-tag
+        id: release
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::The release tag is $TAG, but package.json says $version (expected v$version)."
+            exit 1
+          fi
+          case "$version" in
+            *-*) expected=true; dist_tag=next ;;
+            *) expected=false; dist_tag=latest ;;
+          esac
+          if [ "$PRERELEASE" != "$expected" ]; then
+            echo "::error::$version needs a GitHub release with pre-release set to $expected."
+            exit 1
+          fi
+          echo "dist_tag=$dist_tag" >> "$GITHUB_OUTPUT"
+          echo "Publishing $version to the \"$dist_tag\" dist-tag"
+      - run: npm ci
+      - name: Publish checks (typecheck, unit tests, build, package checks)
+        run: npm run prepublishOnly
+      - name: Publish (trusted publishing, with provenance)
+        run: npm publish --ignore-scripts --tag "${{ steps.release.outputs.dist_tag }}"
