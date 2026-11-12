@@ -1,6 +1,6 @@
 {
   "name": "react-multi-input-rangeslider",
-  "version": "3.0.0-alpha.0",
+  "version": "3.0.0-rc.0",
   "description": "Accessible, themeable dual-thumb range slider for React (price ranges and more). Controlled/uncontrolled, tooltips, marks, RTL, dark mode, CSS-variable theming.",
   "main": "dist/index.cjs",
   "scripts": {
