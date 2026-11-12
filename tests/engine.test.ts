@@ -1,6 +1,8 @@
 import {
   centerAt,
+  containShift,
   decimalsOf,
+  groupOverlapping,
   fractionAt,
   fromValues,
   keyCommand,
@@ -209,6 +211,38 @@ describe("pickFromStack", () => {
     expect(pickFromStack([0, 1], false)).toBe(0);
     expect(pickFromStack([0, 1], true)).toBe(1);
     expect(pickFromStack([1, 2, 3], true)).toBe(3);
+  });
+});
+
+describe("tooltip layout", () => {
+  it("keeps apart labels that don't touch", () => {
+    expect(groupOverlapping([{ center: 50, size: 40 }, { center: 150, size: 40 }], 4)).toEqual([[0], [1]]);
+  });
+
+  it("merges labels that overlap or come closer than the gap", () => {
+    expect(groupOverlapping([{ center: 100, size: 40 }, { center: 130, size: 40 }], 4)).toEqual([[0, 1]]);
+    expect(groupOverlapping([{ center: 100, size: 40 }, { center: 142, size: 40 }], 4)).toEqual([[0, 1]]);
+    expect(groupOverlapping([{ center: 100, size: 40 }, { center: 144, size: 40 }], 4)).toEqual([[0], [1]]);
+  });
+
+  it("walks labels in screen order (RTL lists them right to left)", () => {
+    const rtl = [{ center: 250, size: 40 }, { center: 230, size: 40 }, { center: 40, size: 40 }];
+    expect(groupOverlapping(rtl, 4)).toEqual([[2], [1, 0]]);
+  });
+
+  it("chains a run of close labels into one group", () => {
+    const run = [10, 40, 70, 200].map((center) => ({ center, size: 36 }));
+    expect(groupOverlapping(run, 4)).toEqual([[0, 1, 2], [3]]);
+  });
+
+  it("shifts labels inward at the ends, never in the middle", () => {
+    expect(containShift(12, 40, 300)).toBe(8);
+    expect(containShift(288, 50, 300)).toBe(-13);
+    expect(containShift(150, 50, 300)).toBe(0);
+  });
+
+  it("lines a label wider than the slider up with its start", () => {
+    expect(containShift(50, 400, 300)).toBe(150);
   });
 });
 

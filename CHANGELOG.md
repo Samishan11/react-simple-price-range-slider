@@ -13,12 +13,14 @@
 ### Changed
 - **Thumbs are real elements.** `.rs-thumb` is now a `div`, and each one holds a visually hidden native `<input type="range">` (`.rs-input`) for focus, screen readers and forms. Custom CSS on `::-webkit-slider-thumb` / `::-moz-range-thumb` or `.rs-thumb:focus-visible` moves to `.rs-thumb` / `.rs-thumb[data-focus-visible]`.
 - `.rs-rail` is gone (`.rs-range` sits inside `.rs-track`). Positions are inline styles, and the root no longer sets `--rs-left` / `--rs-right`.
-- Tooltips are a zero-width `.rs-tooltip` anchor around a `.rs-tooltip-label` bubble, centred without transforms (crisper text). Always-on tooltips reserve space above the slider.
+- Tooltips are a zero-width `.rs-tooltip` anchor around a `.rs-tooltip-label` bubble, centred without transforms (crisper text). Always-on tooltips reserve space above the slider. A merged label is a `.rs-tooltip.rs-tooltip-merged`; the thumbs' own tooltips are then marked `data-merged` and hidden.
 - The last-used thumb is marked `data-active` (drawn on top) instead of an inline `z-index`.
 - A single-thumb slider is no longer wrapped in `role="group"`; `ariaLabel` names the slider itself.
 
 ### Fixed
 - **An off-grid `max` is reachable**, and every thumb sits exactly where its value says: e.g. `max={100} step={30}` used to snap the thumb to 90 while the fill and label said 100.
+- **Always-on tooltips no longer cover each other.** When thumbs come close, their tooltips merge into one label (`$480 – $520`, or a single value when the thumbs coincide) and split again as the thumbs move apart.
+- **Tooltips stay inside the slider at the ends.** A label that would overflow is nudged inward while its arrow keeps pointing at the thumb; labels re-fit when the slider is resized. Works in RTL and on vertical sliders.
 - **`onChangeEnd` fires for assistive technology**: a screen reader's increment (e.g. a VoiceOver swipe) never ended an adjustment before.
 - Assistive-technology increments always move at least one step, even when the browser's own increment is smaller than `step`.
 - The focus ring follows the input method: shown for keyboard focus, hidden after a pointer press, back as soon as a key is pressed.

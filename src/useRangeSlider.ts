@@ -286,6 +286,8 @@ export function useRangeSlider(options: UseRangeSliderOptions) {
     disabled,
     /** Index of the thumb used last (drawn on top). */
     active,
+    /** The control element (set through `getControlProps`), e.g. for measuring. */
+    controlRef,
     hover,
     dragging,
     focusVisible,

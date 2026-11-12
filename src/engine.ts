@@ -195,6 +195,45 @@ export interface KeyOptions {
   flipUpDown: boolean;
 }
 
+// ---- tooltips ------------------------------------------------------------------------------
+
+/** A tooltip label along the slider's main axis, in px from the control's start (screen order). */
+export interface TipBox {
+  /** Centre of the label: the thumb centre it points at. */
+  center: number;
+  /** Width (horizontal) or height (vertical) of the label. */
+  size: number;
+}
+
+/**
+ * Groups neighbouring tooltips whose labels would overlap or come closer than `gap`, walking
+ * them in screen order. A group of one is a tooltip shown on its own; larger groups merge.
+ */
+export function groupOverlapping(tips: readonly TipBox[], gap: number): number[][] {
+  const order = tips.map((_, i) => i).sort((a, b) => tips[a].center - tips[b].center);
+  const groups: number[][] = [];
+  for (const i of order) {
+    const group = groups[groups.length - 1];
+    const prev = group && tips[group[group.length - 1]];
+    if (prev && prev.center + prev.size / 2 + gap > tips[i].center - tips[i].size / 2) group.push(i);
+    else groups.push([i]);
+  }
+  return groups;
+}
+
+/**
+ * How far to move a label centred at `center` so it stays inside [0, length]. A label wider
+ * than the slider lines up with its start.
+ */
+export function containShift(center: number, size: number, length: number) {
+  const start = center - size / 2;
+  if (size >= length || start < 0) return -start;
+  const end = center + size / 2;
+  return end > length ? length - end : 0;
+}
+
+// ---- keyboard (continued) --------------------------------------------------------------------
+
 /** What a key does to a focused thumb (WAI-ARIA slider pattern), or null for other keys. */
 export function keyCommand(key: string, o: KeyOptions): KeyCommand | null {
   const n = o.shift ? o.large : 1;

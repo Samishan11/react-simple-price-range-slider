@@ -47,6 +47,11 @@ function App() {
       <Section title="Disabled">
         <MultiRangeSlider min={0} max={100} defaultValue={{ min: 20, max: 60 }} disabled width="100%" />
       </Section>
+      <Section title="v3 · tooltips merge when close and stay inside at the ends">
+        <RangeSlider max={1000} step={10} defaultValue={[480, 520]} tooltip="always" formatValue={(n) => usd.format(n)} width="100%" />
+        <div style={{ height: 12 }} />
+        <RangeSlider max={1000} step={10} defaultValue={[0, 1000]} tooltip="always" formatValue={(n) => usd.format(n)} width="100%" />
+      </Section>
       <Section title="v3 · single thumb (number in, number out)">
         <RangeSlider defaultValue={40} tooltip ariaLabel="Volume" formatValue={(n) => `${n}%`} width="100%" />
       </Section>
