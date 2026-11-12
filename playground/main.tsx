@@ -16,6 +16,22 @@ function Section({ title, dark, children }: { title: string; dark?: boolean; chi
   );
 }
 
+const VARIANTS = ["default", "minimal", "soft", "material"] as const;
+const caption: React.CSSProperties = { fontSize: 12, opacity: 0.6, margin: "0 0 4px" };
+
+function Gallery({ dark }: { dark?: boolean }) {
+  return (
+    <>
+      {VARIANTS.map((variant) => (
+        <div key={variant} style={{ marginBottom: 14 }}>
+          <p style={caption}>{variant}</p>
+          <RangeSlider variant={variant} theme={dark ? "dark" : undefined} defaultValue={[25, 70]} tooltip="always" width="100%" />
+        </div>
+      ))}
+    </>
+  );
+}
+
 function App() {
   const [v, setV] = useState<RangeValues>({ min: 200, max: 800 });
   return (
@@ -52,6 +68,33 @@ function App() {
         <RangeSlider max={1000} step={10} defaultValue={[480, 520]} tooltip="always" formatValue={(n) => usd.format(n)} width="100%" />
         <div style={{ height: 12 }} />
         <RangeSlider max={1000} step={10} defaultValue={[0, 1000]} tooltip="always" formatValue={(n) => usd.format(n)} width="100%" />
+      </Section>
+      <Section title="v3 · styles: variant=…">
+        <Gallery />
+      </Section>
+      <Section title="v3 · styles in dark mode" dark>
+        <Gallery dark />
+      </Section>
+      <Section title="v3 · sizes: sm · md · lg (any variant)">
+        {(["sm", "md", "lg"] as const).map((size) => (
+          <div key={size} style={{ marginBottom: 10 }}>
+            <p style={caption}>{size}</p>
+            <RangeSlider size={size} defaultValue={[30, 70]} width="100%" />
+          </div>
+        ))}
+        <RangeSlider size="lg" variant="material" defaultValue={[30, 70]} width="100%" />
+      </Section>
+      <Section title="v3 · material: one handle · RTL · vertical">
+        <RangeSlider variant="material" defaultValue={40} width="100%" ariaLabel="Brightness" />
+        <div style={{ height: 8 }} />
+        <div dir="rtl">
+          <RangeSlider variant="material" defaultValue={[20, 60]} dir="rtl" width="100%" />
+        </div>
+        <div style={{ display: "flex", gap: 40, marginTop: 12 }}>
+          <RangeSlider variant="material" orientation="vertical" defaultValue={[30, 70]} tooltip />
+          <RangeSlider variant="soft" orientation="vertical" defaultValue={[30, 70]} />
+          <RangeSlider variant="minimal" orientation="vertical" defaultValue={[30, 70]} />
+        </div>
       </Section>
       <Section title="v3 · unstyled + Tailwind classes (no stylesheet)">
         <RangeSlider

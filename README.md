@@ -105,6 +105,8 @@ import { RangeSlider } from "react-multi-input-rangeslider";
 | `tooltip` | `boolean \| "hover" \| "always"` | `false` | Value bubble over each thumb. `true` = `"hover"` (also on keyboard focus and drag). `"always"` reserves space above the slider, and merges the tooltips of close thumbs into one (`$480 – $520`). Tooltips never overflow the slider's ends. |
 | `marks` | `boolean \| number \| { value, label? }[]` | — | Tick marks. `true` = 4 intervals; a number = that many; or an array of custom marks. |
 | `theme` | `"light" \| "dark" \| "auto"` | light | `"auto"` follows the OS colour scheme. |
+| `variant` | `"default" \| "minimal" \| "soft" \| "material"` | `"default"` | A ready-made look (see [Styles](#styles)). |
+| `size` | `"sm" \| "md" \| "lg"` | `"md"` | Scales the look: 5/6, 1 or 4/3. |
 | `dir` | `"ltr" \| "rtl"` | — | Text direction. Arrow keys follow it. |
 | `name` | `string` | — | Form field name. One thumb submits `name`, two submit `${name}-min` / `${name}-max`, more submit `name` once per thumb. |
 | `ariaLabel` | `string` | — | Accessible name of the slider (a labelled `role="group"` when there are several thumbs). |
@@ -120,9 +122,28 @@ import { RangeSlider } from "react-multi-input-rangeslider";
 | `currencyText` | `string` | `"$"` | Prefix used when neither `formatValue` nor `format` is set. |
 | `valueStyle` | `CSSProperties` | — | Inline style for the values row. |
 
+## Styles
+
+Four ready-made looks, each in light and dark (`theme`), RTL, vertical and `inverted`, and in three sizes:
+
+```tsx
+<RangeSlider variant="material" size="lg" defaultValue={[20, 80]} />
+```
+
+| `variant` | Look |
+| --- | --- |
+| `"default"` | Outlined round thumbs on a 6px track. |
+| `"minimal"` | A hairline track with small solid dots. |
+| `"soft"` | A thin track with large white knobs and a soft shadow. |
+| `"material"` | Material 3 style: a thick track, bar handles with gaps cut into the track, stop dots at the unfilled ends, pill-shaped value labels. |
+
+`size="sm"` / `"lg"` scales a variant by 5/6 / 4/3 (it sets `--rs-scale`). Small thumbs keep a 24px grab area, so they stay as easy to catch as a 24px one ([WCAG 2.5.8](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum)).
+
+Variants are only CSS (a `data-variant` attribute), so every token below still applies and overrides them. Material's handles have their own tokens: `--rs-material-handle` (length, 44px), `--rs-material-bar` (thickness, 4px), `--rs-material-cut` (half the gap around a handle, 8px), `--rs-material-stop` (dot size, 4px). It cuts gaps around one or two handles; with three or more thumbs the handles sit on the track without gaps.
+
 ## Theming
 
-Everything visual is a CSS variable. Override them on the slider, a wrapper, or globally:
+Everything visual is a CSS variable. Set them on the slider (`className` or `style`), on every slider (`.rs-root { … }`), or in a scope (`.filters .rs-root { … }`). The built-in values have zero specificity, so yours win over every variant, size and theme, whatever order the stylesheets load in.
 
 ```css
 .my-slider {
@@ -148,10 +169,21 @@ Everything visual is a CSS variable. Override them on the slider, a wrapper, or 
 | `--rs-tooltip-bg` / `--rs-tooltip-color` | `#0f172a` / `#fff` |
 | `--rs-mark-color` | `#64748b` |
 | `--rs-height` | `200px` (length of a vertical slider) |
-| `--rs-thumb-shadow` | `0 1px 3px rgb(0 0 0 / 0.25)` |
+| `--rs-thumb-shadow` | `0 1px 3px rgb(0 0 0 / 0.25)` (remove with `0 0 #0000`; `none` would also remove the focus ring) |
 | `--rs-tooltip-font-size` / `--rs-tooltip-offset` | `0.75rem` / `8px` |
+| `--rs-tooltip-pad-x` / `--rs-tooltip-pad-y` | `8px` / `3px` |
+| `--rs-scale` | `1` (multiplies the default sizes; `size` sets it) |
 
 Dark mode: `theme="dark"`, or `theme="auto"` to follow `prefers-color-scheme`.
+
+The control also exposes each thumb's position as a 0–1 fraction of the track, `--rs-p0`, `--rs-p1`, …, for effects that follow the thumbs:
+
+```css
+/* A track that fades in up to the first thumb */
+.my-slider .rs-track {
+  background: linear-gradient(to right, transparent, var(--rs-track-color) calc(var(--rs-p0) * 100%));
+}
+```
 
 State attributes you can style (or target with Tailwind's `data-*` variants):
 
@@ -159,10 +191,10 @@ State attributes you can style (or target with Tailwind's `data-*` variants):
 | --- | --- |
 | thumb | `data-index`, `data-active` (last used, drawn on top), `data-hover`, `data-dragging`, `data-focus-visible`, `data-disabled` |
 | range (fill) | `data-draggable`, `data-hover`, `data-dragging` |
-| tooltip | `data-visible` (shown: always, or on hover / drag / keyboard focus), `data-merged` (folded into a shared label) |
+| tooltip | `data-visible` (shown: always, or on hover / drag / keyboard focus), `data-merged` (folded into a shared label, and hidden with `visibility` even while `data-visible`) |
 | mark | `data-active` (inside the selected range) |
 | control | `data-hover`, `data-dragging` |
-| root | `data-orientation`, `data-disabled`, `data-readonly`, `data-tooltip` |
+| root | `data-orientation`, `data-disabled`, `data-readonly`, `data-tooltip`, `data-variant`, `data-size`, `data-inverted`, `data-thumbs` (thumb count) |
 
 Thumbs can be any size, set by `--rs-thumb-size` or by a class: the slider measures the rendered thumb, so positions and dragging always line up with it.
 

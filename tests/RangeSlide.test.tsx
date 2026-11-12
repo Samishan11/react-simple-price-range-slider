@@ -279,6 +279,32 @@ describe("theme, tooltips, marks, slots", () => {
     expect(root).toHaveAttribute("dir", "rtl");
   });
 
+  it("exposes variant, size, thumb count and inversion on the root, for the stylesheet", () => {
+    const { container, rerender } = render(<RangeSlider defaultValue={[20, 80]} />);
+    const root = container.firstElementChild!;
+    expect(root).not.toHaveAttribute("data-variant");
+    expect(root).not.toHaveAttribute("data-size");
+    expect(root).not.toHaveAttribute("data-inverted");
+    expect(root).toHaveAttribute("data-thumbs", "2");
+    rerender(<RangeSlider defaultValue={[20, 80]} variant="material" size="lg" inverted />);
+    expect(root).toHaveAttribute("data-variant", "material");
+    expect(root).toHaveAttribute("data-size", "lg");
+    expect(root).toHaveAttribute("data-inverted");
+    const single = render(<RangeSlider defaultValue={40} variant="soft" size="sm" />).container.firstElementChild!;
+    expect(single).toHaveAttribute("data-thumbs", "1");
+    expect(single).toHaveAttribute("data-variant", "soft");
+    expect(single).toHaveAttribute("data-size", "sm");
+  });
+
+  it("sets each thumb's track fraction as --rs-p<i> on the control, and keeps it current", () => {
+    const { container } = render(<RangeSlider min={0} max={200} defaultValue={[50, 150]} />);
+    const control = container.querySelector<HTMLElement>(".rs-control")!;
+    expect(control.style.getPropertyValue("--rs-p0")).toBe("0.25");
+    expect(control.style.getPropertyValue("--rs-p1")).toBe("0.75");
+    fireEvent.keyDown(container.querySelectorAll('input[type="range"]')[1], { key: "End" });
+    expect(control.style.getPropertyValue("--rs-p1")).toBe("1");
+  });
+
   it("renders tooltips only when enabled, always-visible on request", () => {
     const { container, rerender } = render(<MultiRangeSlider min={0} max={100} />);
     expect(container.querySelectorAll(".rs-tooltip")).toHaveLength(0);

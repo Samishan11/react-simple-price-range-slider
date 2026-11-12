@@ -1,46 +1,61 @@
 /*
- * Theming: override any of these CSS variables on .rs-root (or an ancestor).
+ * Theming: set any of these CSS variables on the slider, through `style`, `className`, or any
+ * selector that matches .rs-root (e.g. `.filters .rs-root`). The defaults are declared with zero
+ * specificity (`:where()`), so your values win, whatever the variant, size or theme.
  *
  *   --rs-width, --rs-height (vertical length), --rs-track-color, --rs-range-color,
  *   --rs-track-height, --rs-thumb-size, --rs-thumb-color, --rs-thumb-border-color,
- *   --rs-thumb-border-width, --rs-thumb-shadow, --rs-focus-ring, --rs-value-color,
- *   --rs-font-size, --rs-tooltip-bg, --rs-tooltip-color, --rs-tooltip-font-size,
- *   --rs-tooltip-offset, --rs-mark-color
+ *   --rs-thumb-border-width, --rs-thumb-shadow (`0 0 #0000` for none, not `none`),
+ *   --rs-focus-ring, --rs-value-color, --rs-font-size, --rs-tooltip-bg, --rs-tooltip-color,
+ *   --rs-tooltip-font-size, --rs-tooltip-offset, --rs-tooltip-pad-x, --rs-tooltip-pad-y,
+ *   --rs-mark-color, --rs-scale (multiplies the default sizes; size="sm" | "lg" set it)
+ *
+ * The control also exposes each thumb's position as a 0–1 fraction of the track:
+ * --rs-p0, --rs-p1, … (for gradients and other track effects).
  *
  * Themes: data-theme="dark" (or "auto" to follow the OS) re-maps the colours.
+ * Variants: data-variant="minimal" | "soft" | "material" (at the end). A variant rule never has
+ * more specificity than the base rule it adjusts, so an override that works for one variant
+ * works for all of them.
  * Positions (thumbs, fill, tooltips, marks) are inline styles set by the component;
  * this file only paints and sizes.
  */
-.rs-root {
+:where(.rs-root) {
+  --rs-scale: 1;
   --rs-width: 250px;
   --rs-height: 200px;
   --rs-track-color: #e2e8f0;
   --rs-range-color: #2563eb;
-  --rs-track-height: 6px;
-  --rs-thumb-size: 24px; /* >= 24px meets WCAG 2.5.8 target size */
+  --rs-track-height: calc(6px * var(--rs-scale));
+  --rs-thumb-size: calc(24px * var(--rs-scale)); /* 24px meets WCAG 2.5.8 target size */
   --rs-thumb-color: #fff;
   --rs-thumb-border-color: var(--rs-range-color);
   --rs-thumb-border-width: 2px;
   --rs-thumb-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
   --rs-focus-ring: 0 0 0 4px rgb(37 99 235 / 0.28);
   --rs-value-color: #334155;
-  --rs-font-size: 0.875rem;
+  --rs-font-size: calc(0.875rem * var(--rs-scale));
   --rs-tooltip-bg: #0f172a;
   --rs-tooltip-color: #fff;
-  --rs-tooltip-font-size: 0.75rem;
+  --rs-tooltip-font-size: calc(0.75rem * var(--rs-scale));
   --rs-tooltip-offset: 8px;
+  --rs-tooltip-pad-x: 8px;
+  --rs-tooltip-pad-y: 3px;
   --rs-mark-color: #64748b;
-
+}
+:where(.rs-root[data-size="sm"]) { --rs-scale: calc(5 / 6); }
+:where(.rs-root[data-size="lg"]) { --rs-scale: calc(4 / 3); }
+@supports (color: color-mix(in srgb, red, blue)) {
+  :where(.rs-root) {
+    --rs-focus-ring: 0 0 0 4px color-mix(in srgb, var(--rs-range-color) 28%, transparent);
+  }
+}
+.rs-root {
   box-sizing: border-box;
   width: var(--rs-width);
   max-width: 100%;
   font-size: var(--rs-font-size);
   color: var(--rs-value-color);
-}
-@supports (color: color-mix(in srgb, red, blue)) {
-  .rs-root {
-    --rs-focus-ring: 0 0 0 4px color-mix(in srgb, var(--rs-range-color) 28%, transparent);
-  }
 }
 .rs-root *,
 .rs-root *::before,
@@ -48,9 +63,9 @@
   box-sizing: border-box;
 }
 
-/* The control receives every pointer press (thumbs and track). */
+/* The control receives every pointer press (thumbs and track); at least 24px thick to tap. */
 .rs-control {
-  height: var(--rs-thumb-size);
+  height: max(var(--rs-thumb-size), 24px);
   cursor: pointer;
   -webkit-user-select: none;
   user-select: none;
@@ -131,7 +146,7 @@
   border-top-color: var(--rs-tooltip-bg);
 }
 .rs-tooltip-label {
-  padding: 3px 8px;
+  padding: var(--rs-tooltip-pad-y) var(--rs-tooltip-pad-x);
   border-radius: 6px;
   background: var(--rs-tooltip-bg);
   color: var(--rs-tooltip-color);
@@ -141,7 +156,7 @@
 }
 /* Always-on tooltips get room above the slider instead of covering what's there. */
 .rs-root[data-tooltip="always"]:not([data-orientation="vertical"]) {
-  padding-top: calc(var(--rs-tooltip-font-size) * 1.4 + 6px + var(--rs-tooltip-offset));
+  padding-top: calc(var(--rs-tooltip-font-size) * 1.4 + 2 * var(--rs-tooltip-pad-y) + var(--rs-tooltip-offset));
 }
 
 /* ---- marks ---- */
@@ -151,7 +166,7 @@
 }
 .rs-mark {
   color: var(--rs-mark-color);
-  font-size: 0.75rem;
+  font-size: calc(0.75rem * var(--rs-scale));
   font-variant-numeric: tabular-nums;
 }
 .rs-mark::before {
@@ -178,7 +193,7 @@
 }
 .rs-root[data-orientation="vertical"] .rs-control {
   grid-area: control;
-  width: var(--rs-thumb-size);
+  width: max(var(--rs-thumb-size), 24px);
   height: var(--rs-height);
 }
 .rs-root[data-orientation="vertical"] .rs-track {
@@ -217,7 +232,7 @@
 }
 
 /* ---- themes ---- */
-.rs-root[data-theme="dark"] {
+:where(.rs-root[data-theme="dark"]) {
   --rs-track-color: #334155;
   --rs-range-color: #60a5fa;
   --rs-thumb-color: #0f172a;
@@ -227,7 +242,7 @@
   --rs-mark-color: #94a3b8;
 }
 @media (prefers-color-scheme: dark) {
-  .rs-root[data-theme="auto"] {
+  :where(.rs-root[data-theme="auto"]) {
     --rs-track-color: #334155;
     --rs-range-color: #60a5fa;
     --rs-thumb-color: #0f172a;
@@ -238,11 +253,181 @@
   }
 }
 
+/* ==== variants ================================================================================ */
+
+/* ---- minimal: hairline track, small solid dots (the grab area stays 24px) ---- */
+:where(.rs-root[data-variant="minimal"]) {
+  --rs-track-height: calc(2px * var(--rs-scale));
+  --rs-thumb-size: calc(14px * var(--rs-scale));
+  --rs-thumb-color: var(--rs-range-color);
+  --rs-thumb-border-width: 0px;
+  --rs-thumb-shadow: 0 0 #0000;
+}
+:where(.rs-root[data-variant="minimal"]) .rs-thumb[data-hover] { transform: scale(1.25); }
+:where(.rs-root[data-variant="minimal"]) .rs-thumb[data-dragging] { transform: scale(1.4); }
+.rs-root:where([data-variant="minimal"]):not([data-disabled]) .rs-thumb[data-disabled] {
+  background: var(--rs-mark-color);
+}
+
+/* ---- soft: thin track, large white knobs with a soft shadow ---- */
+:where(.rs-root[data-variant="soft"]) {
+  --rs-track-height: calc(4px * var(--rs-scale));
+  --rs-thumb-size: calc(28px * var(--rs-scale));
+  --rs-track-color: #e5e5ea;
+  --rs-range-color: #007aff;
+  --rs-thumb-color: #fff;
+  --rs-thumb-border-width: 0px;
+  --rs-thumb-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.04), 0 3px 8px rgb(0 0 0 / 0.15), 0 3px 1px rgb(0 0 0 / 0.06);
+  --rs-tooltip-bg: #1c1c1e;
+  --rs-tooltip-color: #fff;
+  --rs-tooltip-pad-x: 10px;
+  --rs-tooltip-pad-y: 4px;
+}
+:where(.rs-root[data-variant="soft"][data-theme="dark"]) {
+  --rs-track-color: #3a3a3c;
+  --rs-range-color: #0a84ff;
+  --rs-tooltip-bg: #f2f2f7;
+  --rs-tooltip-color: #1c1c1e;
+}
+@media (prefers-color-scheme: dark) {
+  :where(.rs-root[data-variant="soft"][data-theme="auto"]) {
+    --rs-track-color: #3a3a3c;
+    --rs-range-color: #0a84ff;
+    --rs-tooltip-bg: #f2f2f7;
+    --rs-tooltip-color: #1c1c1e;
+  }
+}
+:where(.rs-root[data-variant="soft"]) .rs-thumb[data-hover] { transform: none; }
+:where(.rs-root[data-variant="soft"]) .rs-thumb[data-dragging] { transform: scale(1.06); }
+:where(.rs-root[data-variant="soft"]) .rs-tooltip-label { border-radius: 8px; }
+.rs-root:where([data-variant="soft"]):not([data-disabled]) .rs-thumb[data-disabled] {
+  background: var(--rs-track-color);
+  box-shadow: var(--rs-thumb-shadow);
+}
+
+/* ---- material (Material 3 style): thick track, bar handles, gaps cut into the track ----
+   Tunable: --rs-material-handle (handle length), --rs-material-bar (handle thickness),
+   --rs-material-cut (half the gap around a handle), --rs-material-stop (end-dot size). */
+:where(.rs-root[data-variant="material"]) {
+  --rs-track-height: calc(16px * var(--rs-scale));
+  --rs-thumb-size: calc(24px * var(--rs-scale)); /* the handle's grab area along the track */
+  --rs-material-handle: calc(44px * var(--rs-scale));
+  --rs-material-bar: calc(4px * var(--rs-scale));
+  --rs-material-cut: calc(8px * var(--rs-scale)); /* bar / 2 + a 6px gap */
+  --rs-material-stop: calc(4px * var(--rs-scale));
+  --rs-range-color: #6750a4;
+  --rs-track-color: #e8def8;
+  --rs-tooltip-bg: #322f35;
+  --rs-tooltip-color: #f5eff7;
+  --rs-tooltip-pad-x: 12px;
+  --rs-tooltip-pad-y: 6px;
+  --rs-axis: to right; /* direction of increasing values, for the gap mask */
+}
+:where(.rs-root[data-variant="material"]:dir(rtl)) { --rs-axis: to left; }
+:where(.rs-root[data-variant="material"][data-inverted]) { --rs-axis: to left; }
+:where(.rs-root[data-variant="material"][data-inverted]:dir(rtl)) { --rs-axis: to right; }
+:where(.rs-root[data-variant="material"][data-orientation="vertical"]) { --rs-axis: to top; }
+:where(.rs-root[data-variant="material"][data-orientation="vertical"][data-inverted]) { --rs-axis: to bottom; }
+:where(.rs-root[data-variant="material"][data-theme="dark"]) {
+  --rs-range-color: #d0bcff;
+  --rs-track-color: #4a4458;
+  --rs-tooltip-bg: #e6e0e9;
+  --rs-tooltip-color: #322f35;
+}
+@media (prefers-color-scheme: dark) {
+  :where(.rs-root[data-variant="material"][data-theme="auto"]) {
+    --rs-range-color: #d0bcff;
+    --rs-track-color: #4a4458;
+    --rs-tooltip-bg: #e6e0e9;
+    --rs-tooltip-color: #322f35;
+  }
+}
+:where(.rs-root[data-variant="material"]) .rs-control { height: var(--rs-material-handle); }
+.rs-root:where([data-variant="material"])[data-orientation="vertical"] .rs-control { width: var(--rs-material-handle); }
+/* The thumb is the grab area; the visible handle is a bar drawn inside it. */
+:where(.rs-root[data-variant="material"]) .rs-thumb {
+  height: var(--rs-material-handle);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.rs-root:where([data-variant="material"])[data-orientation="vertical"] .rs-thumb {
+  width: var(--rs-material-handle);
+  height: var(--rs-thumb-size);
+}
+:where(.rs-root[data-variant="material"]) .rs-thumb::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: var(--rs-material-bar);
+  border-radius: 999px;
+  background: var(--rs-range-color);
+  transition: width 0.12s ease, height 0.12s ease;
+}
+.rs-root:where([data-variant="material"])[data-orientation="vertical"] .rs-thumb::before {
+  width: auto;
+  height: var(--rs-material-bar);
+}
+:where(.rs-root[data-variant="material"]) .rs-thumb[data-hover],
+:where(.rs-root[data-variant="material"]) .rs-thumb[data-dragging] { transform: none; }
+:where(.rs-root[data-variant="material"]) .rs-thumb[data-dragging]::before { width: calc(var(--rs-material-bar) / 2); }
+.rs-root:where([data-variant="material"])[data-orientation="vertical"] .rs-thumb[data-dragging]::before {
+  width: auto;
+  height: calc(var(--rs-material-bar) / 2);
+}
+:where(.rs-root[data-variant="material"]) .rs-thumb[data-focus-visible] { box-shadow: none; }
+:where(.rs-root[data-variant="material"]) .rs-thumb[data-focus-visible]::before {
+  outline: 2px solid var(--rs-range-color);
+  outline-offset: 2px;
+}
+.rs-root:where([data-variant="material"]):not([data-disabled]) .rs-thumb[data-disabled]::before {
+  background: var(--rs-mark-color);
+}
+:where(.rs-root[data-variant="material"]) .rs-tooltip::after { display: none; } /* value labels have no arrow */
+:where(.rs-root[data-variant="material"]) .rs-tooltip-label { border-radius: 999px; }
+/* Gaps around one or two handles, from the --rs-p0 / --rs-p1 positions the control sets. */
+:where(.rs-root[data-variant="material"][data-thumbs="1"]) .rs-track {
+  -webkit-mask-image: linear-gradient(var(--rs-axis), #000 calc(var(--rs-p0) * 100% - var(--rs-material-cut)), transparent 0 calc(var(--rs-p0) * 100% + var(--rs-material-cut)), #000 0);
+  mask-image: linear-gradient(var(--rs-axis), #000 calc(var(--rs-p0) * 100% - var(--rs-material-cut)), transparent 0 calc(var(--rs-p0) * 100% + var(--rs-material-cut)), #000 0);
+}
+:where(.rs-root[data-variant="material"][data-thumbs="2"]) .rs-track {
+  -webkit-mask-image: linear-gradient(var(--rs-axis), #000 calc(var(--rs-p0) * 100% - var(--rs-material-cut)), transparent 0 calc(var(--rs-p0) * 100% + var(--rs-material-cut)), #000 0 calc(var(--rs-p1) * 100% - var(--rs-material-cut)), transparent 0 calc(var(--rs-p1) * 100% + var(--rs-material-cut)), #000 0);
+  mask-image: linear-gradient(var(--rs-axis), #000 calc(var(--rs-p0) * 100% - var(--rs-material-cut)), transparent 0 calc(var(--rs-p0) * 100% + var(--rs-material-cut)), #000 0 calc(var(--rs-p1) * 100% - var(--rs-material-cut)), transparent 0 calc(var(--rs-p1) * 100% + var(--rs-material-cut)), #000 0);
+}
+/* Stop indicators: a dot centred in each unfilled end of the track (::before = min end). */
+:where(.rs-root[data-variant="material"]) .rs-track::before,
+:where(.rs-root[data-variant="material"]) .rs-track::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  margin: auto;
+  width: var(--rs-material-stop);
+  height: var(--rs-material-stop);
+  border-radius: 50%;
+  background: var(--rs-range-color);
+  --rs-stop-inset: calc((var(--rs-track-height) - var(--rs-material-stop)) / 2);
+}
+:where(.rs-root[data-variant="material"]) .rs-track::before { inset-inline-start: var(--rs-stop-inset); }
+:where(.rs-root[data-variant="material"]) .rs-track::after { inset-inline-end: var(--rs-stop-inset); }
+:where(.rs-root[data-variant="material"][data-inverted]) .rs-track::before { inset-inline: auto var(--rs-stop-inset); }
+:where(.rs-root[data-variant="material"][data-inverted]) .rs-track::after { inset-inline: var(--rs-stop-inset) auto; }
+:where(.rs-root[data-variant="material"][data-orientation="vertical"]) .rs-track::before { inset: auto 0 var(--rs-stop-inset); }
+:where(.rs-root[data-variant="material"][data-orientation="vertical"]) .rs-track::after { inset: var(--rs-stop-inset) 0 auto; }
+:where(.rs-root[data-variant="material"][data-orientation="vertical"][data-inverted]) .rs-track::before { inset: var(--rs-stop-inset) 0 auto; }
+:where(.rs-root[data-variant="material"][data-orientation="vertical"][data-inverted]) .rs-track::after { inset: auto 0 var(--rs-stop-inset); }
+:where(.rs-root[data-variant="material"][data-thumbs="1"]) .rs-track::before { content: none; } /* filled */
+
 /* ---- Windows high-contrast / forced colours ---- */
 @media (forced-colors: active) {
   .rs-track { background: GrayText; }
   .rs-range { background: Highlight; }
-  .rs-thumb { background: Canvas; border-color: Highlight; }
+  .rs-thumb { background: Canvas; border: 2px solid Highlight; } /* also outlines borderless variants */
   .rs-thumb[data-focus-visible] { outline: 2px solid CanvasText; outline-offset: 2px; }
   .rs-tooltip-label { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
+  :where(.rs-root[data-variant="material"]) .rs-thumb { border: 0; background: none; }
+  :where(.rs-root[data-variant="material"]) .rs-thumb::before,
+  :where(.rs-root[data-variant="material"]) .rs-track::before,
+  :where(.rs-root[data-variant="material"]) .rs-track::after { background: Highlight; }
 }

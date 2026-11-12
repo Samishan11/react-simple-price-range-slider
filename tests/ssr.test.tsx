@@ -24,6 +24,17 @@ describe("server rendering", () => {
     expect(html).toContain("inset-inline-start:calc(var(--rs-thumb-size, 24px) / 2 + (100% - var(--rs-thumb-size, 24px)) * 0.3333333333333333)");
   });
 
+  it("renders the variant, size and thumb positions, so styles apply before hydration", () => {
+    const html = renderToString(<RangeSlider min={0} max={4} value={[1, 3]} variant="material" size="sm" />);
+    const root = html.match(/<div[^>]*class="rs-root"[^>]*>/)![0];
+    expect(root).toContain('data-variant="material"');
+    expect(root).toContain('data-size="sm"');
+    expect(root).toContain('data-thumbs="2"');
+    const control = html.match(/<div[^>]*class="rs-control"[^>]*>/)![0];
+    expect(control).toMatch(/--rs-p0:0\.25(;|")/);
+    expect(control).toMatch(/--rs-p1:0\.75(;|")/);
+  });
+
   it("renders a single value as one slider, without a group", () => {
     const html = renderToString(<RangeSlider defaultValue={40} ariaLabel="Volume" />);
     expect(html).not.toContain('role="group"');

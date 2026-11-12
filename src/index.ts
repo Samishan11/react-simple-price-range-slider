@@ -12,6 +12,8 @@ export type {
   Mark,
   SliderSlot,
   Orientation,
+  SliderVariant,
+  SliderSize,
   Step,
   Collision,
   ChangeMeta,
