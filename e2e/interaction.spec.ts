@@ -1,16 +1,20 @@
 import { test, expect, type Page } from "@playwright/test";
+import type { RangeValues } from "../src";
 import {
   open,
   controlBox,
+  centerX,
   centerY,
   thumbSize,
   thumbX,
+  thumbY,
   drag,
   values,
   labels,
   events,
   measureThumbs,
   expectNear,
+  PX,
 } from "./helpers";
 
 /** Pointer geometry for a slider with the given range: `at(v)` is the x of a thumb at value v (LTR). */
@@ -25,6 +29,13 @@ const between = (n: number, lo: number, hi: number) => {
   expect(n).toBeGreaterThanOrEqual(lo);
   expect(n).toBeLessThanOrEqual(hi);
 };
+
+// Firefox fires `blur` on a focused thumb while Playwright tears the page down; React's dev-only
+// error tracking then logs "An error was thrown ... React doesn't know what it was". Blurring
+// first keeps the log clean. (Not a user-facing issue: it only happens as the page is destroyed.)
+test.afterEach(async ({ page }) => {
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+});
 
 test.describe("pointer", () => {
   test("dragging a thumb moves it and fires onChangeEnd once with the final value", async ({ page }) => {
@@ -123,8 +134,9 @@ test.describe("pointer", () => {
     const log = await events(page);
     expect(log.length).toBeGreaterThan(0);
     for (const { value } of log) {
-      expect(value.min).toBe(Number(value.min.toFixed(1)));
-      expect(value.max).toBe(Number(value.max.toFixed(1)));
+      const { min, max } = value as RangeValues;
+      expect(min).toBe(Number(min.toFixed(1)));
+      expect(max).toBe(Number(max.toFixed(1)));
     }
     expect(await labels(page)).toEqual(["$0.3", "$0.4"]);
   });
@@ -224,7 +236,7 @@ test.describe("accessibility", () => {
           .flatMap((r) => Array.from(r.cssRules).map((s) => (s as CSSStyleRule).selectorText))
       )
     );
-    expect(selectors.some((s) => /slider-thumb|range-thumb/.test(s))).toBe(true);
+    expect(selectors).toContain(".rs-thumb");
     expect(selectors).toContain(".rs-tooltip");
   });
 });
@@ -250,10 +262,91 @@ test.describe("keyboard", () => {
     await open(page, "basic");
     const { y, at } = await geometry(page, 0, 100);
     await drag(page, { x: at(80), y }, at(70));
-    const upper = page.locator(".rs-thumb").nth(1);
-    await expect(upper).toBeFocused();
-    expect(await upper.evaluate((el) => el.matches(":focus-visible"))).toBe(false);
+    await expect(page.locator(".rs-input").nth(1)).toBeFocused();
+    await expect(page.locator(".rs-thumb[data-focus-visible]")).toHaveCount(0);
     await page.keyboard.press("ArrowLeft");
     expect(await values(page)).toEqual([20, 69]);
+    await expect(page.locator(".rs-thumb").nth(1)).toHaveAttribute("data-focus-visible", "");
+  });
+
+  test("Tab moves focus between thumbs and shows the focus ring", async ({ page, browserName }) => {
+    test.skip(browserName === "webkit", "Safari's Tab only reaches text fields unless Full Keyboard Access is on");
+    await open(page, "basic");
+    await page.keyboard.press("Tab");
+    await expect(page.locator(".rs-input").first()).toBeFocused();
+    await expect(page.locator(".rs-thumb").first()).toHaveAttribute("data-focus-visible", "");
+    await page.keyboard.press("Tab");
+    await expect(page.locator(".rs-input").nth(1)).toBeFocused();
+    await expect(page.locator(".rs-thumb[data-focus-visible]")).toHaveCount(1);
+  });
+});
+
+test.describe("v3: thumbs, orientation and forms", () => {
+  test("single thumb: drag, track click, and onChange reports a number", async ({ page }) => {
+    await open(page, "single");
+    const { y, at } = await geometry(page, 0, 100);
+    await drag(page, { x: at(30), y }, at(60));
+    between((await values(page))[0], 59, 61);
+    await page.mouse.click(at(90), y);
+    expect(await values(page)).toEqual([90]);
+    const log = await events(page);
+    const last = log[log.length - 1];
+    expect(last).toEqual({ type: "end", value: 90 });
+  });
+
+  test("three thumbs: neighbours block the middle one; a stack separates by direction", async ({ page }) => {
+    await open(page, "three");
+    const { box, y, at } = await geometry(page, 0, 100);
+    await drag(page, { x: at(50), y }, box.x + box.width + 20);
+    expect(await values(page)).toEqual([20, 80, 80]);
+    await drag(page, { x: at(80), y }, at(65));
+    expect(await values(page)).toEqual([20, 65, 80]);
+  });
+
+  test("vertical: dragging up increases the value, and the thumbs sit on the contract", async ({ page }) => {
+    await open(page, "vertical");
+    const box = await controlBox(page);
+    const size = await thumbSize(page);
+    const x = centerX(box);
+    const [lower, upper] = await measureThumbs(page, "y");
+    expectNear(lower.center, thumbY(box, size, 0, 100, 20), PX, "lower thumb centre");
+    expectNear(upper.center, thumbY(box, size, 0, 100, 80), PX, "upper thumb centre");
+    await page.mouse.move(x, thumbY(box, size, 0, 100, 20));
+    await page.mouse.down();
+    await page.mouse.move(x, thumbY(box, size, 0, 100, 50), { steps: 15 });
+    await page.mouse.up();
+    between((await values(page))[0], 49, 51);
+    await page.keyboard.press("ArrowUp");
+    between((await values(page))[0], 50, 52);
+  });
+
+  test("inverted: the maximum is on the left", async ({ page }) => {
+    await open(page, "inverted");
+    const { y, rtlAt } = await geometry(page, 0, 100); // inverted LTR mirrors like RTL
+    await drag(page, { x: rtlAt(20), y }, rtlAt(40));
+    between((await values(page))[0], 39, 41);
+  });
+
+  test("an off-grid max is reachable, and the thumb sits exactly at the end of the fill", async ({ page }) => {
+    await open(page, "off-grid-max");
+    expect(await values(page)).toEqual([0, 100]);
+    const [, upper] = await measureThumbs(page);
+    const fill = (await page.locator(".rs-range").boundingBox())!;
+    expectNear(fill.x + fill.width, upper.center, PX, "fill end vs upper thumb");
+    const { box, y, at } = await geometry(page, 0, 100);
+    await drag(page, { x: at(100), y }, at(60));
+    expect(await values(page)).toEqual([0, 60]);
+    await drag(page, { x: at(60), y }, box.x + box.width + 20);
+    expect(await values(page)).toEqual([0, 100]);
+  });
+
+  test("forms submit the real values", async ({ page }) => {
+    await open(page, "form");
+    const read = () =>
+      page.evaluate(() => Object.fromEntries(new FormData(document.getElementById("form") as HTMLFormElement)));
+    expect(await read()).toEqual({ "price-min": "20", "price-max": "80" });
+    await page.locator(".rs-input").first().focus();
+    await page.keyboard.press("End");
+    expect(await read()).toEqual({ "price-min": "80", "price-max": "80" });
   });
 });

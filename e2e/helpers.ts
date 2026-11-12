@@ -14,7 +14,7 @@ export async function open(page: Page, name: string, query = "") {
   await expect(page.locator(".rs-root")).toBeVisible();
 }
 
-/** The interactive area: as wide as the slider, as tall as a thumb. */
+/** The interactive area: as long as the slider, one thumb thick. */
 export async function controlBox(page: Page): Promise<Box> {
   const box = await page.locator(".rs-control").boundingBox();
   if (!box) throw new Error("slider is not rendered");
@@ -22,6 +22,7 @@ export async function controlBox(page: Page): Promise<Box> {
 }
 
 export const centerY = (box: Box) => box.y + box.height / 2;
+export const centerX = (box: Box) => box.x + box.width / 2;
 
 export const thumbSize = (page: Page) =>
   page.locator(".rs-root").evaluate((el) => parseFloat(getComputedStyle(el).getPropertyValue("--rs-thumb-size")));
@@ -32,6 +33,11 @@ export const thumbSize = (page: Page) =>
  */
 export function thumbX(box: Box, size: number, min: number, max: number, value: number) {
   return box.x + size / 2 + ((box.width - size) * (value - min)) / (max - min);
+}
+
+/** Same contract for vertical sliders, where the minimum is at the bottom. */
+export function thumbY(box: Box, size: number, min: number, max: number, value: number) {
+  return box.y + box.height - size / 2 - ((box.height - size) * (value - min)) / (max - min);
 }
 
 export async function drag(page: Page, from: { x: number; y: number }, toX: number, steps = 20) {
@@ -58,49 +64,18 @@ export function expectNear(actual: number, expected: number, tolerance: number, 
   expect(Math.abs(actual - expected), `${what}: ${actual.toFixed(2)} vs ${expected.toFixed(2)}`).toBeLessThanOrEqual(tolerance);
 }
 
-/** Real elements (track, fill, tooltips) have exact rects: hold them to half a pixel. */
+/** Every part, thumbs included, is a real element with an exact rect: hold them to half a pixel. */
 export const PX = 0.5;
+export const THUMB_PX = PX;
 
-/**
- * How precisely measureThumbs() can see a thumb. 2.x thumbs are pseudo-elements and
- * elementFromPoint() only resolves ~1px in Chromium/WebKit. v3 thumbs are real elements,
- * so this drops to PX.
- */
-export const THUMB_PX = 1;
-
-/**
- * Where each thumb really is on screen. 2.x thumbs are browser pseudo-elements with no
- * bounding box, so this hit-tests along the control's centre line in 0.25px steps, hiding
- * the other thumbs while one is measured so overlapping thumbs measure correctly. Thumbs
- * normally ignore the pointer (the control handles it), so hit-testing is switched on for
- * them only while measuring.
- */
-export function measureThumbs(page: Page) {
-  return page.locator(".rs-control").evaluate((control) => {
-    const STEP = 0.25;
-    const probe = document.createElement("style");
-    probe.textContent =
-      ".rs-thumb::-webkit-slider-thumb { pointer-events: all !important; }\n" +
-      ".rs-thumb::-moz-range-thumb { pointer-events: all !important; }";
-    document.head.append(probe);
-    const rect = control.getBoundingClientRect();
-    const y = rect.top + rect.height / 2;
-    const inputs = Array.from(control.querySelectorAll<HTMLInputElement>('input[type="range"]'));
-    const measured = inputs.map((input) => {
-      const others = inputs.filter((other) => other !== input);
-      others.forEach((other) => (other.style.visibility = "hidden"));
-      let first = NaN;
-      let last = NaN;
-      for (let x = rect.left - 40; x <= rect.right + 40; x += STEP) {
-        if (document.elementFromPoint(x, y) === input) {
-          if (Number.isNaN(first)) first = x;
-          last = x;
-        }
-      }
-      others.forEach((other) => (other.style.visibility = ""));
-      return { center: (first + last + STEP) / 2, width: last - first + STEP };
-    });
-    probe.remove();
-    return measured;
-  });
+/** Each thumb's centre and size along the main axis (`y` for vertical sliders). */
+export function measureThumbs(page: Page, axis: "x" | "y" = "x") {
+  return page.locator(".rs-thumb").evaluateAll(
+    (els, a) =>
+      els.map((el) => {
+        const r = el.getBoundingClientRect();
+        return a === "x" ? { center: r.left + r.width / 2, width: r.width } : { center: r.top + r.height / 2, width: r.height };
+      }),
+    axis
+  );
 }

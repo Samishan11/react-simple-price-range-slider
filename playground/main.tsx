@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
-import MultiRangeSlider, { RangeValues } from "../src";
+import MultiRangeSlider, { RangeSlider, RangeValues } from "../src";
 import "../src/styles.css";
 
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -46,6 +46,24 @@ function App() {
       </Section>
       <Section title="Disabled">
         <MultiRangeSlider min={0} max={100} defaultValue={{ min: 20, max: 60 }} disabled width="100%" />
+      </Section>
+      <Section title="v3 · single thumb (number in, number out)">
+        <RangeSlider defaultValue={40} tooltip ariaLabel="Volume" formatValue={(n) => `${n}%`} width="100%" />
+      </Section>
+      <Section title="v3 · three thumbs">
+        <RangeSlider defaultValue={[20, 50, 80]} tooltip marks width="100%" />
+      </Section>
+      <Section title="v3 · step 30 with an off-grid max (100 is reachable)">
+        <RangeSlider max={100} step={30} defaultValue={[0, 100]} marks={[0, 30, 60, 90, 100].map((value) => ({ value }))} width="100%" />
+      </Section>
+      <Section title="v3 · inverted">
+        <RangeSlider defaultValue={[20, 60]} inverted width="100%" />
+      </Section>
+      <Section title="v3 · vertical">
+        <div style={{ display: "flex", gap: 48 }}>
+          <RangeSlider orientation="vertical" defaultValue={[20, 80]} tooltip marks />
+          <RangeSlider orientation="vertical" defaultValue={30} ariaLabel="Level" showValues={false} />
+        </div>
       </Section>
     </div>
   );

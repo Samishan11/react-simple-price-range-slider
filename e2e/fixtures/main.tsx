@@ -1,24 +1,24 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import MultiRangeSlider, { type MultiRangeSliderProps, type RangeValues } from "../../src";
+import { RangeSlider, type RangeSliderProps, type SliderValue } from "../../src";
 import "../../src/styles.css";
 
 /**
- * One page, many scenarios: `/?case=<name>` renders a single 300px-wide slider.
- * Optional overrides: `&value=20,80` (start values) and `&thumb=32` (thumb size in px).
+ * One page, many scenarios: `/?case=<name>` renders a single slider (300px wide, or 200px tall
+ * when vertical). Optional overrides: `&value=20,80` (start values) and `&thumb=32` (thumb size).
  * Every onChange / onChangeEnd payload is recorded on `window.__events` for the tests.
  */
-export type SliderEvent = { type: "change" | "end"; value: RangeValues };
+export type SliderEvent = { type: "change" | "end"; value: SliderValue };
 
 const events: SliderEvent[] = [];
 (window as unknown as { __events: SliderEvent[] }).__events = events;
-const record = (type: SliderEvent["type"]) => (value: RangeValues) => {
+const record = (type: SliderEvent["type"]) => (value: SliderValue) => {
   events.push({ type, value });
 };
 
 const usd = (n: number) => `$${n.toLocaleString("en-US")}`;
 
-type Case = Omit<MultiRangeSliderProps, "onChange" | "onChangeEnd">;
+type Case = Omit<RangeSliderProps<SliderValue>, "onChange" | "onChangeEnd">;
 
 const cases: Record<string, Case> = {
   basic: { min: 0, max: 100, defaultValue: { min: 20, max: 80 } },
@@ -35,6 +35,11 @@ const cases: Record<string, Case> = {
   "tooltips-edges": { min: 0, max: 1000, step: 10, tooltip: "always", formatValue: usd },
   rtl: { min: 0, max: 100, defaultValue: { min: 20, max: 80 }, dir: "rtl" },
   disabled: { min: 0, max: 100, defaultValue: { min: 20, max: 80 }, disabled: true },
+  single: { min: 0, max: 100, defaultValue: 30, ariaLabel: "Volume" },
+  three: { min: 0, max: 100, defaultValue: [20, 50, 80] },
+  vertical: { min: 0, max: 100, defaultValue: [20, 80], orientation: "vertical" },
+  inverted: { min: 0, max: 100, defaultValue: [20, 80], inverted: true },
+  form: { min: 0, max: 100, defaultValue: { min: 20, max: 80 }, name: "price" },
 };
 
 const params = new URLSearchParams(location.search);
@@ -43,21 +48,23 @@ const props: Case | undefined = cases[name] && { ...cases[name] };
 
 const value = params.get("value");
 if (props && value) {
-  const [min, max] = value.split(",").map(Number);
-  props.defaultValue = { min, max };
+  const numbers = value.split(",").map(Number);
+  const given = props.defaultValue;
+  props.defaultValue =
+    typeof given === "number" ? numbers[0] : Array.isArray(given) ? numbers : { min: numbers[0], max: numbers[1] };
 }
 const thumb = params.get("thumb");
 
+const slider = props && (
+  <RangeSlider
+    {...props}
+    width="300px"
+    style={thumb ? ({ "--rs-thumb-size": `${thumb}px` } as React.CSSProperties) : undefined}
+    onChange={record("change")}
+    onChangeEnd={record("end")}
+  />
+);
+
 createRoot(document.getElementById("root")!).render(
-  props ? (
-    <MultiRangeSlider
-      {...props}
-      width="300px"
-      style={thumb ? ({ "--rs-thumb-size": `${thumb}px` } as React.CSSProperties) : undefined}
-      onChange={record("change")}
-      onChangeEnd={record("end")}
-    />
-  ) : (
-    <p>Unknown case “{name}”</p>
-  )
+  !slider ? <p>Unknown case “{name}”</p> : name === "form" ? <form id="form">{slider}</form> : slider
 );

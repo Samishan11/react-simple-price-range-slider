@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased (3.0.0)
+
+### Added
+- **Any number of thumbs.** `value` / `defaultValue` take a number (one thumb), an array (one thumb per entry) or `{ min, max }`, and `onChange` / `onChangeEnd` report the same shape. New named export `RangeSlider`; `MultiRangeSlider` stays the default export.
+- **Vertical** sliders (`orientation="vertical"`, length `--rs-height`) and **`inverted`** sliders.
+- **Full WAI-ARIA keyboard support**: Shift + arrows and Page Up / Page Down take a large step (`largeStep`, ~10% by default), Home / End go to the thumb's limits, and arrows follow RTL and `inverted`.
+- **`step="any"`**, **`getAriaLabel(index)`**, and a second callback argument `{ thumb, source }` (`"pointer"`, `"keyboard"` or `"input"`).
+- **`useRangeSlider` hook** (experimental) for fully custom markup.
+- `min` / `max` are optional (0 / 100).
+
+### Changed
+- **Thumbs are real elements.** `.rs-thumb` is now a `div`, and each one holds a visually hidden native `<input type="range">` (`.rs-input`) for focus, screen readers and forms. Custom CSS on `::-webkit-slider-thumb` / `::-moz-range-thumb` or `.rs-thumb:focus-visible` moves to `.rs-thumb` / `.rs-thumb[data-focus-visible]`.
+- `.rs-rail` is gone (`.rs-range` sits inside `.rs-track`). Positions are inline styles, and the root no longer sets `--rs-left` / `--rs-right`.
+- Tooltips are a zero-width `.rs-tooltip` anchor around a `.rs-tooltip-label` bubble, centred without transforms (crisper text). Always-on tooltips reserve space above the slider.
+- The last-used thumb is marked `data-active` (drawn on top) instead of an inline `z-index`.
+- A single-thumb slider is no longer wrapped in `role="group"`; `ariaLabel` names the slider itself.
+
+### Fixed
+- **An off-grid `max` is reachable**, and every thumb sits exactly where its value says: e.g. `max={100} step={30}` used to snap the thumb to 90 while the fill and label said 100.
+- **`onChangeEnd` fires for assistive technology**: a screen reader's increment (e.g. a VoiceOver swipe) never ended an adjustment before.
+- Assistive-technology increments always move at least one step, even when the browser's own increment is smaller than `step`.
+- The focus ring follows the input method: shown for keyboard focus, hidden after a pointer press, back as soon as a key is pressed.
+
 ## 2.1.0
 
 ### Added
