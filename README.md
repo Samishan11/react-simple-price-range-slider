@@ -1,15 +1,18 @@
 # react-multi-input-rangeslider
 
 [![npm version](https://img.shields.io/npm/v/react-multi-input-rangeslider.svg)](https://www.npmjs.com/package/react-multi-input-rangeslider)
-[![CI](https://github.com/Samishan11/react-simple-price-range-slider/actions/workflows/ci.yml/badge.svg)](https://github.com/Samishan11/react-simple-price-range-slider/actions/workflows/ci.yml)
+[![CI](https://github.com/Samishan11/react-multi-input-rangeslider/actions/workflows/ci.yml/badge.svg)](https://github.com/Samishan11/react-multi-input-rangeslider/actions/workflows/ci.yml)
 [![types](https://img.shields.io/npm/types/react-multi-input-rangeslider.svg)](https://www.npmjs.com/package/react-multi-input-rangeslider)
 [![license](https://img.shields.io/npm/l/react-multi-input-rangeslider.svg)](LICENSE)
 
 A small, accessible, themeable **range slider** for React with one, two or more thumbs, built for price filters and any other numeric range. Zero runtime dependencies, TypeScript types included, works with React 16.8 – 19, server rendering and React Server Components (Next.js App Router).
 
+**[Live demo](https://samishan11.github.io/react-multi-input-rangeslider/)** · [npm](https://www.npmjs.com/package/react-multi-input-rangeslider) · [Changelog](CHANGELOG.md)
+
 ![Preview](docs/preview.png)
 
 - **One, two or many thumbs**: pass a number, an array or `{ min, max }`, and `onChange` reports the same shape
+- **4 built-in styles** (`default`, `minimal`, `soft`, Material 3) in 3 sizes, each in light and dark
 - Controlled **and** uncontrolled; horizontal or **vertical**; **inverted**; RTL
 - `step` (or `"any"`), `minGap`, `disabled`, custom value formatting (`Intl.NumberFormat`, currencies, units…)
 - Themeable with **CSS variables**; light / dark / auto themes
@@ -27,7 +30,7 @@ A small, accessible, themeable **range slider** for React with one, two or more 
 npm install react-multi-input-rangeslider
 ```
 
-Upgrading from 2.x: every 2.x prop still works ([migration notes](#migrating-from-2x-to-30)). The 2.x docs are in [the 2.1.0 README](https://github.com/Samishan11/react-simple-price-range-slider/blob/v2.1.0/README.md).
+Upgrading from 2.x: every 2.x prop still works ([migration notes](#migrating-from-2x-to-30)). The 2.x docs are in [the 2.1.0 README](https://github.com/Samishan11/react-multi-input-rangeslider/blob/v2.1.0/README.md).
 
 ## Usage
 
