@@ -1,7 +1,7 @@
 {
   "name": "react-multi-input-rangeslider",
-  "version": "3.0.0",
-  "description": "Accessible, themeable dual-thumb range slider for React (price ranges and more). Controlled/uncontrolled, tooltips, marks, RTL, dark mode, CSS-variable theming.",
+  "version": "3.0.1",
+  "description": "Accessible React range slider for price filters and more: single, dual or multi-thumb, 4 built-in styles, Tailwind support, tooltips that never overlap, marks, vertical, RTL and a headless hook.",
   "main": "dist/index.cjs",
   "scripts": {
     "build": "tsup && node scripts/build-css.mjs",
@@ -17,24 +17,35 @@
   "keywords": [
     "react",
     "range-slider",
-    "dual-slider",
-    "multi-input",
-    "input-range",
-    "price-range",
     "slider",
+    "multi-range-slider",
+    "dual-range-slider",
+    "double-range-slider",
+    "price-range",
+    "price-filter",
+    "range-input",
+    "input-range",
+    "multi-input",
+    "tailwind",
+    "tailwindcss",
+    "headless",
+    "vertical-slider",
+    "rtl",
     "accessible",
-    "typescript"
+    "a11y",
+    "typescript",
+    "react-component"
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Samishan11/react-simple-price-range-slider.git"
+    "url": "git+https://github.com/Samishan11/react-multi-input-rangeslider.git"
   },
   "author": "Samishan Thapa Chhetri",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Samishan11/react-simple-price-range-slider/issues"
+    "url": "https://github.com/Samishan11/react-multi-input-rangeslider/issues"
   },
-  "homepage": "https://github.com/Samishan11/react-simple-price-range-slider#readme",
+  "homepage": "https://samishan11.github.io/react-multi-input-rangeslider/",
   "peerDependencies": {
     "react": ">=16.8.0 <20",
     "react-dom": ">=16.8.0 <20"

@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.0.1
+
+No code changes.
+
+### Changed
+- The repository moved to [github.com/Samishan11/react-multi-input-rangeslider](https://github.com/Samishan11/react-multi-input-rangeslider), matching the package name. Old links redirect.
+- Package page: a new description and keywords, the [live demo](https://samishan11.github.io/react-multi-input-rangeslider/) as homepage, and a README preview of the 3.0 styles.
+
 ## 3.0.0
 
 Every 2.x prop still works, and `MultiRangeSlider` still reports `{ min, max }`. If you wrote CSS against the markup, see [Migrating from 2.x to 3.0](README.md#migrating-from-2x-to-30). The code is the same as 3.0.0-rc.0.

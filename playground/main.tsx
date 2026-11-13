@@ -36,6 +36,33 @@ function App() {
   const [v, setV] = useState<RangeValues>({ min: 200, max: 800 });
   return (
     <div style={{ padding: 32, fontFamily: "system-ui", display: "grid", gap: 20, maxWidth: 440 }}>
+      <Section title="Styles: variant=…">
+        <Gallery />
+      </Section>
+      <Section title="Styles in dark mode" dark>
+        <Gallery dark />
+      </Section>
+      <Section title="Sizes: sm · md · lg (any variant)">
+        {(["sm", "md", "lg"] as const).map((size) => (
+          <div key={size} style={{ marginBottom: 10 }}>
+            <p style={caption}>{size}</p>
+            <RangeSlider size={size} defaultValue={[30, 70]} width="100%" />
+          </div>
+        ))}
+        <RangeSlider size="lg" variant="material" defaultValue={[30, 70]} width="100%" />
+      </Section>
+      <Section title="Material: one handle · RTL · vertical">
+        <RangeSlider variant="material" defaultValue={40} width="100%" ariaLabel="Brightness" />
+        <div style={{ height: 8 }} />
+        <div dir="rtl">
+          <RangeSlider variant="material" defaultValue={[20, 60]} dir="rtl" width="100%" />
+        </div>
+        <div style={{ display: "flex", gap: 40, marginTop: 12 }}>
+          <RangeSlider variant="material" orientation="vertical" defaultValue={[30, 70]} tooltip />
+          <RangeSlider variant="soft" orientation="vertical" defaultValue={[30, 70]} />
+          <RangeSlider variant="minimal" orientation="vertical" defaultValue={[30, 70]} />
+        </div>
+      </Section>
       <Section title="Controlled · formatValue · tooltip on hover">
         <MultiRangeSlider min={0} max={1000} step={10} value={v} onChange={setV} formatValue={(n) => usd.format(n)} tooltip width="100%" />
         <p>{JSON.stringify(v)} <button onClick={() => setV({ min: 0, max: 1000 })}>reset</button></p>
@@ -64,39 +91,12 @@ function App() {
       <Section title="Disabled">
         <MultiRangeSlider min={0} max={100} defaultValue={{ min: 20, max: 60 }} disabled width="100%" />
       </Section>
-      <Section title="v3 · tooltips merge when close and stay inside at the ends">
+      <Section title="Tooltips merge when close and stay inside at the ends">
         <RangeSlider max={1000} step={10} defaultValue={[480, 520]} tooltip="always" formatValue={(n) => usd.format(n)} width="100%" />
         <div style={{ height: 12 }} />
         <RangeSlider max={1000} step={10} defaultValue={[0, 1000]} tooltip="always" formatValue={(n) => usd.format(n)} width="100%" />
       </Section>
-      <Section title="v3 · styles: variant=…">
-        <Gallery />
-      </Section>
-      <Section title="v3 · styles in dark mode" dark>
-        <Gallery dark />
-      </Section>
-      <Section title="v3 · sizes: sm · md · lg (any variant)">
-        {(["sm", "md", "lg"] as const).map((size) => (
-          <div key={size} style={{ marginBottom: 10 }}>
-            <p style={caption}>{size}</p>
-            <RangeSlider size={size} defaultValue={[30, 70]} width="100%" />
-          </div>
-        ))}
-        <RangeSlider size="lg" variant="material" defaultValue={[30, 70]} width="100%" />
-      </Section>
-      <Section title="v3 · material: one handle · RTL · vertical">
-        <RangeSlider variant="material" defaultValue={40} width="100%" ariaLabel="Brightness" />
-        <div style={{ height: 8 }} />
-        <div dir="rtl">
-          <RangeSlider variant="material" defaultValue={[20, 60]} dir="rtl" width="100%" />
-        </div>
-        <div style={{ display: "flex", gap: 40, marginTop: 12 }}>
-          <RangeSlider variant="material" orientation="vertical" defaultValue={[30, 70]} tooltip />
-          <RangeSlider variant="soft" orientation="vertical" defaultValue={[30, 70]} />
-          <RangeSlider variant="minimal" orientation="vertical" defaultValue={[30, 70]} />
-        </div>
-      </Section>
-      <Section title="v3 · unstyled + Tailwind classes (no stylesheet)">
+      <Section title="Unstyled + Tailwind classes (no stylesheet)">
         <RangeSlider
           unstyled
           defaultValue={[25, 75]}
@@ -115,7 +115,7 @@ function App() {
           }}
         />
       </Section>
-      <Section title="v3 · custom thumb content (renderThumb)">
+      <Section title="Custom thumb content (renderThumb)">
         <RangeSlider
           defaultValue={[30, 70]}
           width="100%"
@@ -130,20 +130,20 @@ function App() {
           )}
         />
       </Section>
-      <Section title="v3 · drag the range (grab the fill)">
+      <Section title="Drag the range (grab the fill)">
         <RangeSlider defaultValue={[30, 60]} draggableRange tooltip width="100%" />
       </Section>
-      <Section title="v3 · when thumbs meet: push · swap">
+      <Section title="When thumbs meet: push · swap">
         <RangeSlider defaultValue={[20, 50, 80]} collision="push" tooltip width="100%" />
         <div style={{ height: 12 }} />
         <RangeSlider defaultValue={[20, 50]} collision="swap" tooltip width="100%" />
       </Section>
-      <Section title="v3 · a locked thumb · read-only">
+      <Section title="A locked thumb · read-only">
         <RangeSlider defaultValue={[20, 80]} disabledThumbs={[true, false]} width="100%" />
         <div style={{ height: 12 }} />
         <RangeSlider defaultValue={[35, 65]} readOnly width="100%" />
       </Section>
-      <Section title="v3 · snap to marks · Intl currency (de-DE)">
+      <Section title="Snap to marks · Intl currency (de-DE)">
         <RangeSlider
           max={10000}
           defaultValue={[2500, 7500]}
@@ -154,19 +154,19 @@ function App() {
           width="100%"
         />
       </Section>
-      <Section title="v3 · single thumb (number in, number out)">
+      <Section title="Single thumb (number in, number out)">
         <RangeSlider defaultValue={40} tooltip ariaLabel="Volume" formatValue={(n) => `${n}%`} width="100%" />
       </Section>
-      <Section title="v3 · three thumbs">
+      <Section title="Three thumbs">
         <RangeSlider defaultValue={[20, 50, 80]} tooltip marks width="100%" />
       </Section>
-      <Section title="v3 · step 30 with an off-grid max (100 is reachable)">
+      <Section title="Step 30 with an off-grid max (100 is reachable)">
         <RangeSlider max={100} step={30} defaultValue={[0, 100]} marks={[0, 30, 60, 90, 100].map((value) => ({ value }))} width="100%" />
       </Section>
-      <Section title="v3 · inverted">
+      <Section title="Inverted">
         <RangeSlider defaultValue={[20, 60]} inverted width="100%" />
       </Section>
-      <Section title="v3 · vertical">
+      <Section title="Vertical">
         <div style={{ display: "flex", gap: 48 }}>
           <RangeSlider orientation="vertical" defaultValue={[20, 80]} tooltip marks />
           <RangeSlider orientation="vertical" defaultValue={30} ariaLabel="Level" showValues={false} />

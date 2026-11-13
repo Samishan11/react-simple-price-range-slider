@@ -35,7 +35,7 @@ jobs:
 
   publish:
     name: publish to npm
-    if: github.event_name == 'release' && github.repository == 'Samishan11/react-simple-price-range-slider'
+    if: github.event_name == 'release' && github.repository == 'Samishan11/react-multi-input-rangeslider'
     runs-on: ubuntu-latest
     permissions:
       contents: read
