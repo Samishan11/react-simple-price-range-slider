@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://samishan11.github.io/react-multi-input-rangeslider/sitemap.xml
